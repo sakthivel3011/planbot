@@ -631,12 +631,13 @@ input:checked + .slider:before {
   padding: 1rem;
 }
 
+
 .confirm-modal, .modal-content {
   background-color: var(--bg);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   width: 100%;
-  max-width: 90%; /* Use a percentage for better responsiveness */
+  max-width: 500px; /* Smaller, consistent modal width */
   overflow: hidden;
 }
 
