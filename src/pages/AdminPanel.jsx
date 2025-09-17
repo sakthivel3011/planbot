@@ -1224,6 +1224,22 @@ const AdminPanel = () => {
     }
     setTeamMembers([...teamMembers, { email, role }]);
     setAlert({ isOpen: true, title: 'Success', message: `Added ${email} as ${role}.` });
+
+    // Prepare and send email
+    const subject = encodeURIComponent('Welcome to the team!');
+    const body = encodeURIComponent(`Dear ${email},
+
+You have been added to the team with the role: ${role}.
+
+Best regards,
+PLANBOT Team`);
+    const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
+    window.open(mailtoLink, '_blank');
+    setAlert({
+      isOpen: true,
+      title: 'Email Prepared',
+      message: `An email to ${email} has been prepared in your default mail application. Please send it manually.`, 
+    });
   };
 
   const handleRemoveTeamMember = (email) => {
