@@ -750,6 +750,12 @@ const AdminPanel = () => {
   const [editingMemberEmail, setEditingMemberEmail] = useState(null);
   const [editingMemberRole, setEditingMemberRole] = useState('viewer');
 
+  // Fix: Add missing handleEditMember function
+  const handleEditMember = (email, role) => {
+    setEditingMemberEmail(email);
+    setEditingMemberRole(role);
+  };
+
   // --- Handlers ---
   const handleResizeMove = useCallback((e) => {
     if (!resizingRef.current.isResizing) return;
