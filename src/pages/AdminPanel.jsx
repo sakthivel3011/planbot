@@ -1251,22 +1251,6 @@ const AdminPanel = () => {
     setAlert({ isOpen: true, title: 'Success', message: 'Column names updated.' });
   };
 
-  const handleEditMember = (email, role) => {
-    setEditingMemberEmail(email);
-    setEditingMemberRole(role);
-  };
-
-  const handleSaveMemberEdit = (email, newRole) => {
-    setTeamMembers(prevMembers =>
-      prevMembers.map(member =>
-        member.email === email ? { ...member, role: newRole } : member
-      )
-    );
-    setEditingMemberEmail(null);
-    setEditingMemberRole('viewer');
-    setAlert({ isOpen: true, title: 'Success', message: `Updated ${email}'s role to ${newRole}.` });
-  };
-
   const handleSendEmails = (messages) => {
     if (!messages || messages.length === 0) {
       setAlert({ isOpen: true, title: 'Notice', message: 'No messages to prepare.' });
