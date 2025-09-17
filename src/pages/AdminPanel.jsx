@@ -484,52 +484,15 @@ const TeamManagementModal = ({ isOpen, onClose, teamMembers, onAddMember, onRemo
             <div className="team-list">
               {teamMembers.map((member, index) => (
                 <div key={index} className="team-member">
-                  {editingMemberEmail === member.email ? (
-                    <>
-                      <span className="member-email">{member.email}</span>
-                      <select
-                        value={editingMemberRole}
-                        onChange={(e) => setEditingMemberRole(e.target.value)}
-                        className="form-input small-select"
-                      >
-                        <option value="viewer">Viewer</option>
-                        <option value="editor">Editor</option>
-                      </select>
-                      <button
-                        className="action-btn save-btn"
-                        onClick={() => onSaveMemberEdit(member.email, editingMemberRole)}
-                        title="Save changes"
-                      >
-                        <span className="icon-save"></span>
-                      </button>
-                      <button
-                        className="action-btn cancel-btn"
-                        onClick={() => setEditingMemberEmail(null)}
-                        title="Cancel edit"
-                      >
-                        <span className="icon-cancel"></span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="member-email">{member.email}</span>
-                      <span className="member-role">{member.role}</span>
-                      <button
-                        className="action-btn edit-btn"
-                        onClick={() => handleEditMember(member.email, member.role)}
-                        title="Edit member role"
-                      >
-                        <span className="icon-edit"></span>
-                      </button>
-                      <button
-                        className="action-btn delete-btn"
-                        onClick={() => onRemoveMember(member.email)}
-                        title="Remove member"
-                      >
-                        <span className="icon-delete"></span>
-                      </button>
-                    </>
-                  )}
+                  <span className="member-email">{member.email}</span>
+                  <span className="member-role">{member.role}</span>
+                  <button
+                    className="action-btn delete-btn"
+                    onClick={() => onRemoveMember(member.email)}
+                    title="Remove member"
+                  >
+                    <span className="icon-delete"></span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -684,98 +647,6 @@ const ColumnAliasModal = ({ isOpen, headers, aliases, onConfirm, onCancel }) => 
   );
 };
 
-const SavedSelectionDetailModal = ({ isOpen, onClose, selection, columnAliases, headers }) => {
-  if (!isOpen || !selection) return null;
-
-  return (
-    <div className="modal-backdrop">
-      <div className="modal-content" style={{ maxWidth: '800px' }}>
-        <div className="modal-header">
-          <h2>Details for: {selection.name} ({selection.data.length} rows)</h2>
-          <button onClick={onClose} className="modal-close-btn">&times;</button>
-        </div>
-        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          {selection.data.length === 0 ? (
-            <p>No data in this selection.</p>
-          ) : (
-            <div className="modal-table-container">
-              <table className="data-table modal-table">
-                <thead>
-                  <tr>
-                    {headers.map(h => <th key={h}>{columnAliases[h] || h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {selection.data.map(row => (
-                    <tr key={row.id}>
-                      {headers.map(h => <td key={h}>{String(row[h])}</td>)}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SavedSelectionsModal = ({ isOpen, onClose, savedSelections, onLoadSelection, onDeleteSelection, onRenameSelection, onViewDetails }) => {
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [selectedSelectionForDetail, setSelectedSelectionForDetail] = useState(null);
-
-  const handleViewDetails = (selection) => {
-    setSelectedSelectionForDetail(selection);
-    setIsDetailModalOpen(true);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop">
-      <div className="modal-content" style={{maxWidth: '500px'}}>
-        <div className="modal-header">
-          <h2>Manage Saved Selections</h2>
-          <button onClick={onClose} className="modal-close-btn">&times;</button>
-        </div>
-        <div className="modal-body" style={{maxHeight: '400px', overflowY: 'auto'}}>
-          {savedSelections.length === 0 ? (
-            <p>No selections saved yet.</p>
-          ) : (
-            <ul className="saved-selections-list">
-              {savedSelections.map((selection, index) => (
-                <li key={index} className="saved-selection-item">
-                  <span>{selection.name} ({selection.data.length} rows)</span>
-                  <div className="actions">
-                    <button className="btn btn-info btn-sm" onClick={() => handleViewDetails(selection)}>View Details</button>
-                    <button className="btn btn-primary btn-sm" onClick={() => onLoadSelection(selection.ids)}>Load</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => onRenameSelection(selection.name)}>Edit Name</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => onDeleteSelection(selection.name)}>Delete</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      </div>
-      <SavedSelectionDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        selection={selectedSelectionForDetail}
-        columnAliases={columnAliases}
-        headers={headers}
-      />
-    </div>
-  );
-};
-
 // --- Main Component ---
 const AdminPanel = () => {
   // --- State Management ---
@@ -821,12 +692,6 @@ const AdminPanel = () => {
   const resizingRef = useRef({ isResizing: false, header: null, startX: 0, startWidth: 0 });
   const [manageColumnsMode, setManageColumnsMode] = useState(false);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
-  const [isSaveSelectionModalOpen, setIsSaveSelectionModalOpen] = useState(false);
-  const [savedSelections, setSavedSelections] = useState(() => {
-    const saved = localStorage.getItem('savedSelections');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [isManageSelectionsModalOpen, setIsManageSelectionsModalOpen] = useState(false);
   
   // New state variables
   const [teamModalOpen, setTeamModalOpen] = useState(false);
@@ -845,14 +710,6 @@ const AdminPanel = () => {
   });
   const [userRole, setUserRole] = useState('admin'); // admin, editor, viewer
   const [shareLink, setShareLink] = useState('');
-  const [editingMemberEmail, setEditingMemberEmail] = useState(null);
-  const [editingMemberRole, setEditingMemberRole] = useState('viewer');
-
-  // Fix: Add missing handleEditMember function
-  const handleEditMember = (email, role) => {
-    setEditingMemberEmail(email);
-    setEditingMemberRole(role);
-  };
 
   // --- Handlers ---
   const handleResizeMove = useCallback((e) => {
@@ -914,10 +771,6 @@ const AdminPanel = () => {
   useEffect(() => {
     localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
   }, [teamMembers]);
-
-  useEffect(() => {
-    localStorage.setItem('savedSelections', JSON.stringify(savedSelections));
-  }, [savedSelections]);
 
   useEffect(() => {
     return () => {
@@ -1334,25 +1187,6 @@ const AdminPanel = () => {
     setAlert({ isOpen: true, title: 'Success', message: `Added ${email} as ${role}.` });
   };
 
-  const handleDeleteSelectedRows = () => {
-    if (selectedRows.size === 0) {
-      setAlert({ isOpen: true, title: 'Notice', message: 'No rows selected for deletion.' });
-      return;
-    }
-    setConfirmation({
-      isOpen: true,
-      title: 'Delete Selected Rows',
-      message: `Are you sure you want to delete ${selectedRows.size} selected row(s)? This action cannot be undone.`,
-      onConfirm: () => {
-        setSheetData(prev => prev.filter(row => !selectedRows.has(row.id)));
-        setSelectedRows(new Set()); // Clear selection after deletion
-        setConfirmation({ isOpen: false });
-        setAlert({ isOpen: true, title: 'Success', message: `${selectedRows.size} row(s) deleted successfully.` });
-      },
-      onCancel: () => setConfirmation({ isOpen: false })
-    });
-  };
-
   const handleRemoveTeamMember = (email) => {
     setTeamMembers(teamMembers.filter(member => member.email !== email));
     setAlert({ isOpen: true, title: 'Success', message: `Removed ${email} from team.` });
@@ -1404,57 +1238,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleSaveSelection = (selectionName) => {
-    if (!selectionName.trim()) {
-      setAlert({ isOpen: true, title: 'Error', message: 'Selection name cannot be empty.' });
-      return;
-    }
-    if (selectedRows.size === 0) {
-      setAlert({ isOpen: true, title: 'Notice', message: 'No rows selected to save.' });
-      return;
-    }
-
-    const selectedRowsData = sheetData.filter(row => selectedRows.has(row.id));
-    const newSavedSelections = savedSelections.filter(s => s.name !== selectionName);
-    setSavedSelections([...newSavedSelections, { name: selectionName, ids: Array.from(selectedRows), data: selectedRowsData }]);
-    setIsSaveSelectionModalOpen(false);
-    setAlert({ isOpen: true, title: 'Success', message: `Selection "${selectionName}" saved.` });
-  };
-
-  const handleLoadSelection = (ids) => {
-    setSelectedRows(new Set(ids));
-    setIsManageSelectionsModalOpen(false);
-    setAlert({ isOpen: true, title: 'Success', message: 'Selection loaded successfully.' });
-  };
-
-  const handleDeleteSavedSelection = (nameToDelete) => {
-    setConfirmation({
-      isOpen: true,
-      title: 'Delete Saved Selection',
-      message: `Are you sure you want to delete the selection "${nameToDelete}"?`,
-      onConfirm: () => {
-        setSavedSelections(prev => prev.filter(s => s.name !== nameToDelete));
-        setConfirmation({ isOpen: false });
-        setAlert({ isOpen: true, title: 'Success', message: `Selection "${nameToDelete}" deleted.` });
-      },
-      onCancel: () => setConfirmation({ isOpen: false })
-    });
-  };
-
-  const handleRenameSavedSelection = (oldName, newName) => {
-    if (!newName.trim()) {
-      setAlert({ isOpen: true, title: 'Error', message: 'New name cannot be empty.' });
-      return;
-    }
-    if (savedSelections.some(s => s.name === newName)) {
-      setAlert({ isOpen: true, title: 'Error', message: `Selection with name "${newName}" already exists.` });
-      return;
-    }
-    setSavedSelections(prev => prev.map(s => s.name === oldName ? { ...s, name: newName } : s));
-    setAlert({ isOpen: true, title: 'Success', message: `Selection renamed to "${newName}".` });
-    setPrompt({ isOpen: false }); // Close the prompt modal
-  };
-
   // --- JSX ---
   if (!isLoggedIn) {
     return (
@@ -1492,13 +1275,7 @@ const AdminPanel = () => {
     <div className={`admin-panel-page ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <ConfirmationModal {...confirmation} />
       <AlertModal {...alert} onClose={() => setAlert({ isOpen: false })} />
-      <PromptModal 
-        isOpen={isSaveSelectionModalOpen}
-        title="Save Current Selection"
-        message="Enter a name for this selection:"
-        onConfirm={handleSaveSelection}
-        onCancel={() => setIsSaveSelectionModalOpen(false)}
-      />
+      <PromptModal {...prompt} />
       <ColumnWidthsPromptModal
         isOpen={widthsPrompt.isOpen}
         title="Set PDF Column Widths"
@@ -1719,19 +1496,6 @@ const AdminPanel = () => {
                 </button>
                 <button className="btn btn-secondary" onClick={() => setManageColumnsMode(prev => !prev)}>
                   {manageColumnsMode ? 'Done' : 'Manage Columns'}
-                </button>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => setIsSaveSelectionModalOpen(true)}
-                  disabled={selectedRows.size === 0}
-                >
-                  💾 Save Current Selection
-                </button>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => setIsManageSelectionsModalOpen(true)}
-                >
-                  🗃️ Manage Saved Selections
                 </button>
                 <button className="btn btn-secondary" onClick={toggleSelectAll} disabled={paginatedData.length === 0}>
                   {selectedRows.size === paginatedData.length ? 'Deselect Page' : 'Select Page'}
