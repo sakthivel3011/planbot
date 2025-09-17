@@ -484,15 +484,52 @@ const TeamManagementModal = ({ isOpen, onClose, teamMembers, onAddMember, onRemo
             <div className="team-list">
               {teamMembers.map((member, index) => (
                 <div key={index} className="team-member">
-                  <span className="member-email">{member.email}</span>
-                  <span className="member-role">{member.role}</span>
-                  <button
-                    className="action-btn delete-btn"
-                    onClick={() => onRemoveMember(member.email)}
-                    title="Remove member"
-                  >
-                    <span className="icon-delete"></span>
-                  </button>
+                  {editingMemberEmail === member.email ? (
+                    <>
+                      <span className="member-email">{member.email}</span>
+                      <select
+                        value={editingMemberRole}
+                        onChange={(e) => setEditingMemberRole(e.target.value)}
+                        className="form-input small-select"
+                      >
+                        <option value="viewer">Viewer</option>
+                        <option value="editor">Editor</option>
+                      </select>
+                      <button
+                        className="action-btn save-btn"
+                        onClick={() => onSaveMemberEdit(member.email, editingMemberRole)}
+                        title="Save changes"
+                      >
+                        <span className="icon-save"></span>
+                      </button>
+                      <button
+                        className="action-btn cancel-btn"
+                        onClick={() => setEditingMemberEmail(null)}
+                        title="Cancel edit"
+                      >
+                        <span className="icon-cancel"></span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="member-email">{member.email}</span>
+                      <span className="member-role">{member.role}</span>
+                      <button
+                        className="action-btn edit-btn"
+                        onClick={() => handleEditMember(member.email, member.role)}
+                        title="Edit member role"
+                      >
+                        <span className="icon-edit"></span>
+                      </button>
+                      <button
+                        className="action-btn delete-btn"
+                        onClick={() => onRemoveMember(member.email)}
+                        title="Remove member"
+                      >
+                        <span className="icon-delete"></span>
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -710,6 +747,8 @@ const AdminPanel = () => {
   });
   const [userRole, setUserRole] = useState('admin'); // admin, editor, viewer
   const [shareLink, setShareLink] = useState('');
+  const [editingMemberEmail, setEditingMemberEmail] = useState(null);
+  const [editingMemberRole, setEditingMemberRole] = useState('viewer');
 
   // --- Handlers ---
   const handleResizeMove = useCallback((e) => {
@@ -1212,6 +1251,22 @@ const AdminPanel = () => {
     setAlert({ isOpen: true, title: 'Success', message: 'Column names updated.' });
   };
 
+  const handleEditMember = (email, role) => {
+    setEditingMemberEmail(email);
+    setEditingMemberRole(role);
+  };
+
+  const handleSaveMemberEdit = (email, newRole) => {
+    setTeamMembers(prevMembers =>
+      prevMembers.map(member =>
+        member.email === email ? { ...member, role: newRole } : member
+      )
+    );
+    setEditingMemberEmail(null);
+    setEditingMemberRole('viewer');
+    setAlert({ isOpen: true, title: 'Success', message: `Updated ${email}'s role to ${newRole}.` });
+  };
+
   const handleSendEmails = (messages) => {
     if (!messages || messages.length === 0) {
       setAlert({ isOpen: true, title: 'Notice', message: 'No messages to prepare.' });
@@ -1313,6 +1368,10 @@ const AdminPanel = () => {
         onAddMember={handleAddTeamMember}
         onRemoveMember={handleRemoveTeamMember}
         onShareLink={handleGenerateShareLink}
+        editingMemberEmail={editingMemberEmail}
+        editingMemberRole={editingMemberRole}
+        handleEditMember={handleEditMember}
+        onSaveMemberEdit={handleSaveMemberEdit}
       />
       
       <PdfConfigModal
