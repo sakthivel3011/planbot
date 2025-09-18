@@ -651,6 +651,67 @@ const ColumnAliasModal = ({ isOpen, headers, aliases, onConfirm, onCancel }) => 
   );
 };
 
+// Save Selected Rows Modal
+const SaveSelectedRowsModal = ({ isOpen, onClose, onSave, selectedRowsCount }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setDescription('');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>Save Selected Rows ({selectedRowsCount})</h2>
+          <button onClick={onClose} className="modal-close-btn">&times;</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label>Name</label>
+            <input
+              type="text"
+              className="form-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter a name for this selection"
+            />
+          </div>
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              className="form-input"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              onSave(name, description);
+              onClose();
+            }}
+            disabled={!name.trim()}
+          >
+            Save Selection
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 const AdminPanel = () => {
   // --- State Management ---
@@ -696,6 +757,8 @@ const AdminPanel = () => {
   const resizingRef = useRef({ isResizing: false, header: null, startX: 0, startWidth: 0 });
   const [manageColumnsMode, setManageColumnsMode] = useState(false);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
+  const [saveSelectionModalOpen, setSaveSelectionModalOpen] = useState(false);
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
   
   // New state variables
   const [teamModalOpen, setTeamModalOpen] = useState(false);
@@ -711,6 +774,10 @@ const AdminPanel = () => {
   const [teamMembers, setTeamMembers] = useState(() => {
     const savedMembers = localStorage.getItem('teamMembers');
     return savedMembers ? JSON.parse(savedMembers) : [];
+  });
+  const [savedSelections, setSavedSelections] = useState(() => {
+    const saved = localStorage.getItem('savedSelections');
+    return saved ? JSON.parse(saved) : [];
   });
   const [userRole, setUserRole] = useState('admin'); // admin, editor, viewer
   const [shareLink, setShareLink] = useState('');
@@ -775,6 +842,10 @@ const AdminPanel = () => {
   useEffect(() => {
     localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
   }, [teamMembers]);
+
+  useEffect(() => {
+    localStorage.setItem('savedSelections', JSON.stringify(savedSelections));
+  }, [savedSelections]);
 
   useEffect(() => {
     return () => {
@@ -867,6 +938,14 @@ const AdminPanel = () => {
   // --- Data Processing Memos ---
   const filteredData = useMemo(() => {
     let result = [...sheetData];
+
+    if (showOnlySelected) {
+      const selectedRowData = result.filter(row => selectedRows.has(row.id));
+      // When showing only selected, we don't want to apply other filters,
+      // but we should respect the sort order.
+      return selectedRowData;
+    }
+
     if (globalSearch.trim()) {
       const searchTerm = globalSearch.trim().toLowerCase();
       result = result.filter(row =>
@@ -881,7 +960,7 @@ const AdminPanel = () => {
       )
     );
     return result;
-  }, [sheetData, filters, globalSearch, headers]);
+  }, [sheetData, filters, globalSearch, headers, showOnlySelected, selectedRows]);
 
   const sortedData = useMemo(() => {
     let sortableData = [...filteredData];
@@ -1123,7 +1202,37 @@ const AdminPanel = () => {
     setMessagingModal({ isOpen: false, type: null });
 
     if (type === 'email') {
-      handleSendEmails(generatedMessages);
+      const validMessages = generatedMessages.filter(msg => msg.recipient);
+      if (validMessages.length === 0) {
+        setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
+        return;
+      }
+
+      setConfirmation({
+        isOpen: true,
+        title: 'Confirm Email Sending',
+        message: `You are about to open ${validMessages.length} email(s). Do you want to continue?`,
+        confirmText: 'Send All',
+        confirmButtonClass: 'btn-primary',
+        onConfirm: () => {
+          validMessages.forEach((msg, index) => {
+            setTimeout(() => {
+              const individualSubject = encodeURIComponent(msg.subject || '');
+              const individualBody = encodeURIComponent(msg.message || '');
+              const individualMailtoLink = `mailto:${msg.recipient}?subject=${individualSubject}&body=${individualBody}`;
+              window.open(individualMailtoLink, '_blank');
+            }, index * 500); // Stagger opening windows
+          });
+          setConfirmation({ isOpen: false });
+          setAlert({
+            isOpen: true,
+            title: 'Success',
+            message: `Preparing ${validMessages.length} email(s). Please review and send each one.`,
+          });
+        },
+        onCancel: () => setConfirmation({ isOpen: false })
+      });
+
     } else if (type === 'whatsapp') {
       const isValidPhoneNumber = (phone) => {
         if (!phone || typeof phone !== 'string') return false;
@@ -1142,25 +1251,35 @@ const AdminPanel = () => {
       const openWhatsAppLinks = () => {
         validMessages.forEach((m, index) => {
           setTimeout(() => {
-            let cleanNumber = m.recipient.replace(/["\s-()+]/g, '');
-            if (!cleanNumber.startsWith('91')) {
-              cleanNumber = '91' + cleanNumber;
+            let cleanNumber = m.recipient.replace(/["\s-()]/g, ''); // remove spaces, dashes, parens
+            if (cleanNumber.startsWith('+')) {
+                // number is already in international format
+            } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
+                cleanNumber = `+${cleanNumber}`;
+            } else if (cleanNumber.length === 10) {
+                cleanNumber = `+91${cleanNumber}`;
+            } else {
+                cleanNumber = `+91${cleanNumber}`;
             }
-            const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(m.message)}`;
+            
+            const url = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(m.message)}`;
             window.open(url, '_blank');
-          }, index * 2000); // 2 second delay
+          }, index * 1500); // Stagger opening windows to allow user to send one by one
         });
+        
         setAlert({
-            isOpen: true,
-            title: 'Success',
-            message: `Opening ${validMessages.length} WhatsApp chat(s). Please send each message manually.`, 
+          isOpen: true,
+          title: 'Success',
+          message: `Opening ${validMessages.length} WhatsApp tabs. Please send each message manually.`,
         });
       };
 
-      let confirmationMessage = `You are about to open ${validMessages.length} WhatsApp chat(s) in new tabs.`;
+      let confirmationMessage = `You are about to open WhatsApp for ${validMessages.length} recipients, one by one.`;
       if (invalidMessages.length > 0) {
         const invalidRecipients = invalidMessages.map(m => m.recipient || 'empty').join(', ');
-        confirmationMessage += `\n\nThe following ${invalidMessages.length} entries were identified as invalid and will be skipped: ${invalidRecipients}.`;
+        confirmationMessage += `
+
+The following ${invalidMessages.length} entries were identified as invalid and will be skipped: ${invalidRecipients}.`;
       }
       confirmationMessage += '\n\nDo you want to continue?';
 
@@ -1262,38 +1381,19 @@ const AdminPanel = () => {
     setAlert({ isOpen: true, title: 'Success', message: 'Column names updated.' });
   };
 
-  const handleSendEmails = (messages) => {
-    if (!messages || messages.length === 0) {
-      setAlert({ isOpen: true, title: 'Notice', message: 'No messages to prepare.' });
-      return;
-    }
-
-    const validMessages = messages.filter(msg => msg.recipient);
-
-    if (validMessages.length === 0) {
-        setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
-        return;
-    }
-  
-    validMessages.forEach((msg, index) => {
-        setTimeout(() => {
-            const subject = encodeURIComponent(msg.subject || '');
-            const body = encodeURIComponent(msg.message || '');
-            const mailtoLink = `mailto:${msg.recipient}?subject=${subject}&body=${body}`;
-            
-            if (mailtoLink.length > 2000) {
-                console.warn(`Mailto link for ${msg.recipient} is too long and might fail.`);
-            }
-
-            window.open(mailtoLink, '_blank');
-        }, index * 2000); // 2-second delay between opening each email client
-    });
-  
-    setAlert({
-      isOpen: true,
-      title: 'Success',
-      message: `Preparing ${validMessages.length} email(s) in your default mail application. Please review and send each one manually.`,
-    });
+  const handleSaveSelection = (name, description) => {
+    const selectedData = sheetData.filter(row => selectedRows.has(row.id));
+    const newSelection = {
+      id: Date.now().toString(),
+      name,
+      description,
+      date: new Date().toLocaleString(),
+      count: selectedData.length,
+      data: selectedData
+    };
+    
+    setSavedSelections(prev => [...prev, newSelection]);
+    setAlert({ isOpen: true, title: 'Success', message: `Selection "${name}" saved with ${selectedData.length} rows.` });
   };
 
   // --- JSX ---
@@ -1380,6 +1480,13 @@ const AdminPanel = () => {
         currentConfig={pdfConfig}
       />
 
+      <SaveSelectedRowsModal
+        isOpen={saveSelectionModalOpen}
+        onClose={() => setSaveSelectionModalOpen(false)}
+        onSave={handleSaveSelection}
+        selectedRowsCount={selectedRows.size}
+      />
+
       {!isSidebarCollapsed && (
         <aside className="admin-sidebar">
           {showSheetSelector ? (
@@ -1430,6 +1537,9 @@ const AdminPanel = () => {
                   
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setIsModalOpen(true)} disabled={selectedRows.size === 0}>
                     👁️ Preview Selected ({selectedRows.size})
+                  </button>
+                  <button className="btn btn-secondary sidebar-action-btn" onClick={() => setSaveSelectionModalOpen(true)} disabled={selectedRows.size === 0}>
+                    💾 Save Selection ({selectedRows.size})
                   </button>
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => exportToCsv('all_data.csv', sortedData)} disabled={sheetData.length === 0}>
                     📥 Download All as CSV
@@ -1710,6 +1820,9 @@ const AdminPanel = () => {
               <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Close</button>
               <button className="btn btn-primary" onClick={() => exportToCsv('selected_data.csv', sheetData.filter(row => selectedRows.has(row.id)))}>
                 Download Selection as CSV
+              </button>
+              <button className="btn btn-primary" onClick={() => setSaveSelectionModalOpen(true)}>
+                Save Selection
               </button>
             </div>
           </div>
