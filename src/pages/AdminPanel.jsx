@@ -1030,7 +1030,8 @@ const AdminPanel = () => {
     }
 
     const headersToExport = columns || headers;
-    const allHeadersForWidths = ['S.No.', ...headersToExport];
+    const aliasedHeadersToExport = headersToExport.map(h => columnAliases[h] || h);
+    const allHeadersForWidths = ['S.No.', ...aliasedHeadersToExport];
 
     setPrompt({
       isOpen: true,
@@ -1087,7 +1088,7 @@ const AdminPanel = () => {
                 }
                 printWindow.document.write(`<table>${colgroup}<thead><tr>`);
                 printWindow.document.write('<th>S.No.</th>');
-                headersToExport.forEach(h => printWindow.document.write(`<th>${h}</th>`));
+                aliasedHeadersToExport.forEach(h => printWindow.document.write(`<th>${h}</th>`));
                 printWindow.document.write('</tr></thead><tbody>');
                 rowsToExport.forEach((row, index) => {
                   printWindow.document.write('<tr>');
