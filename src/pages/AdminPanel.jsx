@@ -11,16 +11,18 @@ const MenuIcon = () => (
 );
 
 // --- Helper Components ---
-const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText, confirmButtonClass }) => {
   if (!isOpen) return null;
   return (
     <div className="confirm-modal-backdrop">
       <div className="confirm-modal">
         <h3>{title}</h3>
-        <p>{message}</p>
+        <div className="confirm-modal-message">
+          {typeof message === 'string' && message.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+        </div>
         <div className="confirm-modal-actions">
           <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-danger" onClick={onConfirm}>Delete</button>
+          <button className={`btn ${confirmButtonClass || 'btn-danger'}`} onClick={onConfirm}>{confirmText || 'Delete'}</button>
         </div>
       </div>
     </div>
@@ -298,7 +300,7 @@ const MessagingModal = ({ isOpen, title, headers, onSend, onCancel, type }) => {
         </div>
         <div className="confirm-modal-actions">
           <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSend(column, subject, message)}>Send</button>
+          <button className="btn btn-primary" onClick={() => onSend(column, subject, message)}>Send All</button>
         </div>
       </div>
     </div>
@@ -1117,18 +1119,63 @@ const AdminPanel = () => {
       return { recipient, subject, message: personalizedMessage };
     });
 
+    setMessagingModal({ isOpen: false, type: null });
+
     if (type === 'email') {
       handleSendEmails(generatedMessages);
     } else if (type === 'whatsapp') {
-      if (generatedMessages.length > 5) {
-        setAlert({ isOpen: true, title: 'Warning', message: 'Opening more than 5 WhatsApp tabs at once is not recommended.' });
+      const isValidPhoneNumber = (phone) => {
+        if (!phone || typeof phone !== 'string') return false;
+        const digits = phone.replace(/["\s-()+]/g, '');
+        return /^\d{7,}$/.test(digits);
+      };
+
+      const validMessages = generatedMessages.filter(m => isValidPhoneNumber(m.recipient));
+      const invalidMessages = generatedMessages.filter(m => !isValidPhoneNumber(m.recipient));
+
+      if (validMessages.length === 0) {
+        setAlert({ isOpen: true, title: 'Error', message: 'No valid phone numbers found for the selected rows. A valid number must contain at least 7 digits.' });
+        return;
       }
-      generatedMessages.forEach(m => {
-        window.open(`https://wa.me/${m.recipient}?text=${encodeURIComponent(m.message)}`, '_blank');
+
+      const openWhatsAppLinks = () => {
+        validMessages.forEach((m, index) => {
+          setTimeout(() => {
+            let cleanNumber = m.recipient.replace(/["\s-()+]/g, '');
+            if (!cleanNumber.startsWith('91')) {
+              cleanNumber = '91' + cleanNumber;
+            }
+            const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(m.message)}`;
+            window.open(url, '_blank');
+          }, index * 2000); // 2 second delay
+        });
+        setAlert({
+            isOpen: true,
+            title: 'Success',
+            message: `Opening ${validMessages.length} WhatsApp chat(s). Please send each message manually.`, 
+        });
+      };
+
+      let confirmationMessage = `You are about to open ${validMessages.length} WhatsApp chat(s) in new tabs.`;
+      if (invalidMessages.length > 0) {
+        const invalidRecipients = invalidMessages.map(m => m.recipient || 'empty').join(', ');
+        confirmationMessage += `\n\nThe following ${invalidMessages.length} entries were identified as invalid and will be skipped: ${invalidRecipients}.`;
+      }
+      confirmationMessage += '\n\nDo you want to continue?';
+
+      setConfirmation({
+        isOpen: true,
+        title: 'Confirm WhatsApp Sending',
+        message: confirmationMessage,
+        confirmText: 'Send All',
+        confirmButtonClass: 'btn-primary',
+        onConfirm: () => {
+          openWhatsAppLinks();
+          setConfirmation({ isOpen: false });
+        },
+        onCancel: () => setConfirmation({ isOpen: false })
       });
     }
-
-    setMessagingModal({ isOpen: false, type: null });
   };
 
   const handleEdit = (row) => {
@@ -1219,38 +1266,32 @@ const AdminPanel = () => {
       setAlert({ isOpen: true, title: 'Notice', message: 'No messages to prepare.' });
       return;
     }
-  
-    const recipients = messages.map(msg => msg.recipient).filter(recipient => recipient);
-    if (recipients.length === 0) {
-      setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
-      return;
+
+    const validMessages = messages.filter(msg => msg.recipient);
+
+    if (validMessages.length === 0) {
+        setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
+        return;
     }
   
-    const subject = encodeURIComponent(messages[0].subject || '');
-    const body = encodeURIComponent(messages[0].message || '');
-    
-    // Use BCC to send to multiple recipients without them seeing each other's emails
-    const bccRecipients = recipients.join(',');
-    const mailtoLink = `mailto:?bcc=${bccRecipients}&subject=${subject}&body=${body}`;
-  
-    // Mailto link has length limits, roughly 2000 characters.
-    // A typical email address is 20-30 chars. 50 emails * 30 chars/email = 1500 chars.
-    // This is a safe limit.
-    if (mailtoLink.length > 2000) {
-      setAlert({
-        isOpen: true,
-        title: 'Error',
-        message: 'Too many recipients. Please select fewer than 50 recipients for a single bulk email.',
-      });
-      return;
-    }
-  
-    window.open(mailtoLink, '_blank');
+    validMessages.forEach((msg, index) => {
+        setTimeout(() => {
+            const subject = encodeURIComponent(msg.subject || '');
+            const body = encodeURIComponent(msg.message || '');
+            const mailtoLink = `mailto:${msg.recipient}?subject=${subject}&body=${body}`;
+            
+            if (mailtoLink.length > 2000) {
+                console.warn(`Mailto link for ${msg.recipient} is too long and might fail.`);
+            }
+
+            window.open(mailtoLink, '_blank');
+        }, index * 2000); // 2-second delay between opening each email client
+    });
   
     setAlert({
       isOpen: true,
       title: 'Success',
-      message: `Prepared 1 email for ${recipients.length} recipient(s) in your default mail application. Please send it manually.`,
+      message: `Preparing ${validMessages.length} email(s) in your default mail application. Please review and send each one manually.`,
     });
   };
 
