@@ -270,6 +270,8 @@ const MessagingModal = ({ isOpen, title, headers, onSend, onCancel, type }) => {
           <label>Template</label>
           <select className="form-input" value={template} onChange={(e) => setTemplate(e.target.value)}>
             <option value="raaga2k25">RAAGA-2K25 Registration</option>
+            <option value="culturalClub">Cultural Club Welcome</option>
+            <option value="musicClub">Music Club Welcome</option>
             <option value="registration">Generic Registration</option>
             <option value="reminder">Event Reminder</option>
             <option value="thankyou">Thank You</option>
@@ -1217,25 +1219,39 @@ const AdminPanel = () => {
       setAlert({ isOpen: true, title: 'Notice', message: 'No messages to prepare.' });
       return;
     }
-
-    let preparedCount = 0;
-    messages.forEach(msg => {
-      const subject = encodeURIComponent(msg.subject || '');
-      const body = encodeURIComponent(msg.message || '');
-      const mailtoLink = `mailto:${msg.recipient}?subject=${subject}&body=${body}`;
-      window.open(mailtoLink, '_blank');
-      preparedCount++;
-    });
-
-    if (preparedCount > 0) {
+  
+    const recipients = messages.map(msg => msg.recipient).filter(recipient => recipient);
+    if (recipients.length === 0) {
+      setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
+      return;
+    }
+  
+    const subject = encodeURIComponent(messages[0].subject || '');
+    const body = encodeURIComponent(messages[0].message || '');
+    
+    // Use BCC to send to multiple recipients without them seeing each other's emails
+    const bccRecipients = recipients.join(',');
+    const mailtoLink = `mailto:?bcc=${bccRecipients}&subject=${subject}&body=${body}`;
+  
+    // Mailto link has length limits, roughly 2000 characters.
+    // A typical email address is 20-30 chars. 50 emails * 30 chars/email = 1500 chars.
+    // This is a safe limit.
+    if (mailtoLink.length > 2000) {
       setAlert({
         isOpen: true,
-        title: 'Success',
-        message: `Prepared ${preparedCount} email(s) in your default mail application. Please send them manually.`,
+        title: 'Error',
+        message: 'Too many recipients. Please select fewer than 50 recipients for a single bulk email.',
       });
-    } else {
-      setAlert({ isOpen: true, title: 'Notice', message: 'No emails were prepared.' });
+      return;
     }
+  
+    window.open(mailtoLink, '_blank');
+  
+    setAlert({
+      isOpen: true,
+      title: 'Success',
+      message: `Prepared 1 email for ${recipients.length} recipient(s) in your default mail application. Please send it manually.`,
+    });
   };
 
   // --- JSX ---
