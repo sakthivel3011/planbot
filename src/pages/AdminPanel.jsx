@@ -1215,19 +1215,23 @@ const AdminPanel = () => {
         confirmText: 'Send All',
         confirmButtonClass: 'btn-primary',
         onConfirm: () => {
+          // Open all emails at once
           validMessages.forEach((msg, index) => {
+            const individualSubject = encodeURIComponent(msg.subject || '');
+            const individualBody = encodeURIComponent(msg.message || '');
+            const individualMailtoLink = `mailto:${msg.recipient}?subject=${individualSubject}&body=${individualBody}`;
+            
+            // Use setTimeout to stagger the opening slightly to avoid popup blocking
             setTimeout(() => {
-              const individualSubject = encodeURIComponent(msg.subject || '');
-              const individualBody = encodeURIComponent(msg.message || '');
-              const individualMailtoLink = `mailto:${msg.recipient}?subject=${individualSubject}&body=${individualBody}`;
               window.open(individualMailtoLink, '_blank');
-            }, index * 500); // Stagger opening windows
+            }, index * 300); // 300ms delay between each
           });
+          
           setConfirmation({ isOpen: false });
           setAlert({
             isOpen: true,
-            title: 'Success',
-            message: `Preparing ${validMessages.length} email(s). Please review and send each one.`,
+            title: 'Action Required',
+            message: `Opening ${validMessages.length} email(s). Please check your browser and allow pop-ups for this site if not all tabs opened.`,
           });
         },
         onCancel: () => setConfirmation({ isOpen: false })
@@ -1249,45 +1253,87 @@ const AdminPanel = () => {
       }
 
       const openWhatsAppLinks = () => {
+        let successCount = 0;
+        let failedNumbers = [];
+        
+        // Open all WhatsApp links at once
         validMessages.forEach((m, index) => {
+          let cleanNumber = m.recipient.replace(/["\s-()]/g, ''); // remove spaces, dashes, parens
+          if (cleanNumber.startsWith('+')) {
+              // number is already in international format
+          } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
+              cleanNumber = `+${cleanNumber}`;
+          } else if (cleanNumber.length === 10) {
+              cleanNumber = `+91${cleanNumber}`;
+          } else {
+              cleanNumber = `+91${cleanNumber}`;
+          }
+          
+          const url = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(m.message)}`;
+          
+          // Use setTimeout to stagger the opening slightly to avoid popup blocking
           setTimeout(() => {
-            let cleanNumber = m.recipient.replace(/["\s-()]/g, ''); // remove spaces, dashes, parens
-            if (cleanNumber.startsWith('+')) {
-                // number is already in international format
-            } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
-                cleanNumber = `+${cleanNumber}`;
-            } else if (cleanNumber.length === 10) {
-                cleanNumber = `+91${cleanNumber}`;
-            } else {
-                cleanNumber = `+91${cleanNumber}`;
+            try {
+              const newWindow = window.open(url, '_blank');
+              if (newWindow) {
+                successCount++;
+              } else {
+                failedNumbers.push(cleanNumber);
+              }
+            } catch (error) {
+              failedNumbers.push(cleanNumber);
+              console.error('Failed to open WhatsApp for:', cleanNumber, error);
             }
             
-            const url = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(m.message)}`;
-            window.open(url, '_blank');
-          }, index * 1500); // Stagger opening windows to allow user to send one by one
-        });
-        
-        setAlert({
-          isOpen: true,
-          title: 'Success',
-          message: `Opening ${validMessages.length} WhatsApp tabs. Please send each message manually.`,
+            // Show final status after all attempts
+            if (index === validMessages.length - 1) {
+              setTimeout(() => {
+                let message = `Successfully opened WhatsApp for ${successCount} out of ${validMessages.length} recipients.`;
+                if (failedNumbers.length > 0) {
+                  message += `\n\nFailed to open for ${failedNumbers.length} numbers. Please ensure pop-ups are enabled for this site.`;
+                }
+                message += '\n\nPlease check your browser tabs and send the messages manually if any tabs failed to open.';
+                
+                setAlert({
+                  isOpen: true,
+                  title: 'WhatsApp Status',
+                  message: message,
+                });
+              }, 500); // Wait a bit for all windows to attempt opening
+            }
+          }, index * 400); // Increased delay to 400ms for better reliability
         });
       };
 
-      let confirmationMessage = `You are about to open WhatsApp for ${validMessages.length} recipients, one by one.`;
+      let confirmationMessage = `🚀 BULK WhatsApp Sending
+      
+You are about to send WhatsApp messages to ${validMessages.length} selected members simultaneously.
+
+📱 ${validMessages.length} WhatsApp tabs will open automatically
+⏱️ Each tab opens with a 400ms delay to ensure reliability
+💬 Each member will receive a personalized message`;
+
       if (invalidMessages.length > 0) {
         const invalidRecipients = invalidMessages.map(m => m.recipient || 'empty').join(', ');
         confirmationMessage += `
 
-The following ${invalidMessages.length} entries were identified as invalid and will be skipped: ${invalidRecipients}.`;
+⚠️ SKIPPED ENTRIES:
+The following ${invalidMessages.length} entries have invalid phone numbers and will be skipped:
+${invalidRecipients}`;
       }
-      confirmationMessage += '\n\nDo you want to continue?';
+      
+      confirmationMessage += `
+
+✅ Make sure pop-ups are enabled in your browser
+✅ Each message can be customized before sending
+
+Do you want to proceed with sending to all ${validMessages.length} valid recipients?`;
 
       setConfirmation({
         isOpen: true,
-        title: 'Confirm WhatsApp Sending',
+        title: 'Confirm Bulk WhatsApp Sending',
         message: confirmationMessage,
-        confirmText: 'Send All',
+        confirmText: `Send to All ${validMessages.length} Recipients`,
         confirmButtonClass: 'btn-primary',
         onConfirm: () => {
           openWhatsAppLinks();
@@ -1594,10 +1640,10 @@ The following ${invalidMessages.length} entries were identified as invalid and w
                 <div className="sidebar-section">
                   <h3>Messaging</h3>
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setMessagingModal({ isOpen: true, type: 'email' })} disabled={selectedRows.size === 0}>
-                    📧 Send Email to Selected
+                    📧 Bulk Email to All Selected ({selectedRows.size})
                   </button>
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setMessagingModal({ isOpen: true, type: 'whatsapp' })} disabled={selectedRows.size === 0}>
-                    💬 Send WhatsApp to Selected
+                    💬 Bulk WhatsApp to All Selected ({selectedRows.size})
                   </button>
                 </div>
 
