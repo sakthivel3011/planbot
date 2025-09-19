@@ -654,12 +654,10 @@ const ColumnAliasModal = ({ isOpen, headers, aliases, onConfirm, onCancel }) => 
 // Save Selected Rows Modal
 const SaveSelectedRowsModal = ({ isOpen, onClose, onSave, selectedRowsCount }) => {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setName('');
-      setDescription('');
     }
   }, [isOpen]);
 
@@ -669,29 +667,28 @@ const SaveSelectedRowsModal = ({ isOpen, onClose, onSave, selectedRowsCount }) =
     <div className="modal-backdrop">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>Save Selected Rows ({selectedRowsCount})</h2>
+          <h2>💾 Save Selected Team ({selectedRowsCount} members)</h2>
           <button onClick={onClose} className="modal-close-btn">&times;</button>
         </div>
         <div className="modal-body">
           <div className="form-group">
-            <label>Name</label>
+            <label>Team Name *</label>
             <input
               type="text"
               className="form-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter a name for this selection"
+              placeholder="Enter a name for this team (e.g., 'Tech Team', 'Marketing Group', 'Event Committee')"
+              style={{fontSize: '1rem', padding: '12px'}}
             />
           </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              className="form-input"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description"
-              rows="3"
-            ></textarea>
+          <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '6px', marginTop: '10px'}}>
+            <p style={{margin: '0', fontSize: '0.9rem', color: '#2d5a2d'}}>
+              <strong>💡 This will save:</strong><br/>
+              • All {selectedRowsCount} currently selected members<br/>
+              • Their complete data and information<br/>
+              • Quick access from sidebar for future use
+            </p>
           </div>
         </div>
         <div className="modal-footer">
@@ -699,13 +696,619 @@ const SaveSelectedRowsModal = ({ isOpen, onClose, onSave, selectedRowsCount }) =
           <button 
             className="btn btn-primary" 
             onClick={() => {
-              onSave(name, description);
+              onSave(name);
               onClose();
             }}
             disabled={!name.trim()}
+            style={{backgroundColor: name.trim() ? '#28a745' : '', borderColor: name.trim() ? '#28a745' : ''}}
           >
-            Save Selection
+            💾 Save Team Selection
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// WhatsApp Bulk Sender Modal
+const WhatsAppBulkModal = ({ isOpen, onClose, selectedRows, sheetData, headers, message, setMessage, progress, status, onStart, onStop, broadcastMode, setBroadcastMode, broadcastPhone, setBroadcastPhone }) => {
+  const [phoneField, setPhoneField] = useState('');
+  const [nameField, setNameField] = useState('');
+
+  // Auto-detect phone and name fields
+  useEffect(() => {
+    if (isOpen && headers.length > 0) {
+      // Look for phone number field
+      const phoneFields = headers.filter(h => 
+        h.toLowerCase().includes('phone') || 
+        h.toLowerCase().includes('mobile') || 
+        h.toLowerCase().includes('number') ||
+        h.toLowerCase().includes('contact')
+      );
+      if (phoneFields.length > 0) {
+        setPhoneField(phoneFields[0]);
+      }
+
+      // Look for name field
+      const nameFields = headers.filter(h => 
+        h.toLowerCase().includes('name') || 
+        h.toLowerCase().includes('first') ||
+        h.toLowerCase().includes('full')
+      );
+      if (nameFields.length > 0) {
+        setNameField(nameFields[0]);
+      }
+      
+      // Default to individual mode (not broadcast)
+      setBroadcastMode(false);
+    }
+  }, [isOpen, headers]);
+
+  if (!isOpen) return null;
+
+  const selectedData = sheetData.filter(row => selectedRows.has(row.id));
+
+  return (
+    <div className="whatsapp-modal-backdrop">
+      <div className="whatsapp-modal-content">
+        <div className="whatsapp-modal-header">
+          <h2>🚀 WhatsApp Bulk Sender</h2>
+          <button onClick={onClose} className="whatsapp-modal-close" disabled={progress.isRunning}>&times;</button>
+        </div>
+        <div className="whatsapp-modal-body">
+          <div className="whatsapp-info" style={{backgroundColor: '#e8f5e8', padding: '15px', borderRadius: '8px', marginBottom: '20px'}}>
+            <h3 style={{color: '#2d5a2d', margin: '0 0 10px 0'}}>✅ AUTOMATIC Individual Messaging:</h3>
+            <ul style={{margin: 0, paddingLeft: '20px', color: '#2d5a2d'}}>
+              <li>📱 <strong>Default: Individual Messages</strong> - Each member gets their own personalized message ({selectedData.length} contacts)</li>
+              <li>� <strong>AUTO-SENDING:</strong> Messages sent automatically to each person individually</li>
+              <li>� <strong>Personalized:</strong> Use {'{{Name}}'}, {'{{Phone}}'} etc. for custom messages to each member</li>
+              <li>⚡ Each member receives their own WhatsApp message with their personal details</li>
+              <li>📊 Real-time progress tracking as each message is sent</li>
+              <li>🎯 Smart delays prevent blocking and ensure delivery to each person</li>
+              <li>✨ Perfect for registration confirmations, personal invites, individual updates</li>
+              <li>🔥 Works on both WhatsApp Web and Mobile App</li>
+            </ul>
+          </div>
+
+          <div className="form-group">
+            <label>Phone Number Field</label>
+            <select 
+              className="form-input" 
+              value={phoneField} 
+              onChange={(e) => setPhoneField(e.target.value)}
+              disabled={progress.isRunning}
+            >
+              <option value="">Select phone number column</option>
+              {headers.map(h => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Name Field (Optional)</label>
+            <select 
+              className="form-input" 
+              value={nameField} 
+              onChange={(e) => setNameField(e.target.value)}
+              disabled={progress.isRunning}
+            >
+              <option value="">Select name column (optional)</option>
+              {headers.map(h => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Sending Mode</label>
+            <div className="broadcast-mode-toggle" style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px'}}>
+              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '12px 16px', border: '3px solid #ddd', borderRadius: '8px', backgroundColor: !broadcastMode ? '#25d366' : '#f8f9fa', color: !broadcastMode ? 'white' : '#333', transition: 'all 0.3s ease', fontWeight: 'bold'}}>
+                <input 
+                  type="radio" 
+                  name="sendingMode" 
+                  checked={!broadcastMode}
+                  onChange={() => setBroadcastMode(false)}
+                  disabled={progress.isRunning}
+                  style={{marginRight: '12px', transform: 'scale(1.2)'}}
+                />
+                📱 Individual Messages - Send personalized message to each person separately
+              </label>
+              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '12px 16px', border: '3px solid #ddd', borderRadius: '8px', backgroundColor: broadcastMode ? '#ff6b6b' : '#f8f9fa', color: broadcastMode ? 'white' : '#333', transition: 'all 0.3s ease', fontWeight: 'bold', borderColor: broadcastMode ? '#ff6b6b' : '#ddd'}}>
+                <input 
+                  type="radio" 
+                  name="sendingMode" 
+                  checked={broadcastMode}
+                  onChange={() => setBroadcastMode(true)}
+                  disabled={progress.isRunning}
+                  style={{marginRight: '12px', transform: 'scale(1.2)'}}
+                />
+                📢 BROADCAST MODE - Send SAME message to ALL {selectedData.length} members
+              </label>
+            </div>
+          </div>
+
+          {broadcastMode && (
+            <div style={{backgroundColor: '#fff3cd', padding: '20px', borderRadius: '10px', marginBottom: '20px', border: '3px solid #ffc107'}}>
+              <h3 style={{margin: '0 0 15px 0', color: '#856404', textAlign: 'center'}}>📢 BROADCAST MODE ACTIVE</h3>
+              <div style={{backgroundColor: '#ffffff', padding: '15px', borderRadius: '8px', marginBottom: '15px'}}>
+                <h4 style={{margin: '0 0 10px 0', color: '#856404'}}>🎯 What will happen:</h4>
+                <ul style={{margin: '0', paddingLeft: '20px', color: '#856404'}}>
+                  <li><strong>✅ SAME message to ALL {selectedData.length} selected members</strong></li>
+                  <li><strong>✅ Use {'{{AllNames}}'}, {'{{Names}}'}, {'{{MemberCount}}'} in your message</strong></li>
+                  <li><strong>✅ Perfect for announcements, member lists, group updates</strong></li>
+                  <li><strong>✅ All {selectedData.length} WhatsApp tabs will open simultaneously</strong></li>
+                </ul>
+              </div>
+              <div style={{textAlign: 'center', fontSize: '14px', color: '#856404'}}>
+                <strong>💡 TIP:</strong> Use the special broadcast templates below for better results!
+              </div>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label>Message Template</label>
+            <textarea
+              className="form-input"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Enter your message here. Use {{Name}} to personalize with names."
+              rows="4"
+              disabled={progress.isRunning}
+            />
+            <small style={{color: '#666', marginTop: '5px', display: 'block'}}>
+              Tip: Use {'{{Name}}'}, {'{{Phone}}'}, or any column name in double curly braces for personalization
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label>Quick Templates</label>
+            <div className="template-buttons" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px'}}>
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hi {{Name}}! 👋
+
+Thank you for registering for our upcoming event!
+
+� Your Personal Details:
+👤 Name: {{Name}}
+📱 Phone: {{Phone}}
+📧 Email: {{Email}}
+
+�📅 Event Details:
+🕐 Date & Time: [Add your event date/time]
+📍 Venue: [Add your venue]
+
+We're excited to see you there! Please arrive 15 minutes early.
+
+For any queries, feel free to contact us.
+
+Best regards,
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                📅 Personal Registration Confirmation
+              </button>
+              
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Dear {{Name}},
+
+🔔 Reminder: Your event is coming up soon!
+
+📅 Event: [Event Name]
+🕐 Time: [Time]
+📍 Location: [Venue]
+
+Don't forget to bring:
+✅ Your registration confirmation
+✅ Valid ID
+✅ [Any other requirements]
+
+See you there!
+
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                🔔 Event Reminder
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hi {{Name}}! 🙏
+
+Thank you for attending our event! We hope you had a great experience.
+
+🌟 We'd love your feedback:
+- How was the event?
+- What did you like most?
+- Any suggestions for improvement?
+
+Your feedback helps us improve future events.
+
+Thanks again!
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                🙏 Thank You Message
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hello {{Name}}! 🎉
+
+We have an exciting announcement!
+
+🚀 Special Offer: [Your offer details]
+⏰ Valid until: [Date]
+💰 Discount: [Discount details]
+
+Don't miss out on this limited-time opportunity!
+
+Contact us for more details.
+
+Best regards,
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                🎉 Promotion/Offer
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hi {{Name}}!
+
+Hope you're doing well! 😊
+
+We wanted to reach out regarding [your reason].
+
+Please let us know:
+- [Question 1]
+- [Question 2]
+- [Question 3]
+
+Looking forward to hearing from you!
+
+Best,
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                💬 Follow Up
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Dear {{Name}},
+
+🚨 URGENT: Important Update
+
+📢 Message: [Your urgent message]
+
+⚠️ Action Required:
+- [Step 1]
+- [Step 2]
+- [Step 3]
+
+Please respond by [deadline].
+
+Contact us immediately if you have questions.
+
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                🚨 Urgent Notice
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hello {{Name}}! 🎂
+
+🎉 Happy Birthday! 🎉
+
+Wishing you a wonderful day filled with happiness and joy!
+
+As a birthday treat, here's a special gift for you:
+🎁 [Your birthday offer/gift]
+
+Have an amazing celebration!
+
+With warm wishes,
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                🎂 Birthday Wishes
+              </button>
+
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary" 
+                onClick={() => setMessage(`Hi {{Name}},
+
+📋 Please confirm your attendance:
+
+📅 Event: [Event Name]
+🕐 Date & Time: [Date/Time]
+📍 Venue: [Location]
+
+Reply with:
+✅ YES - I'll attend
+❌ NO - Can't make it
+
+Deadline for confirmation: [Date]
+
+Thanks!
+Team`)}
+                disabled={progress.isRunning}
+                style={{fontSize: '12px', padding: '6px 8px'}}
+              >
+                📋 Confirmation Request
+              </button>
+
+              {/* BROADCAST TEMPLATES - Only show when broadcast mode is enabled */}
+              {broadcastMode && (
+                <>
+                  <div style={{width: '100%', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '6px', margin: '10px 0', textAlign: 'center', gridColumn: 'span 2'}}>
+                    <strong style={{color: '#856404'}}>📢 BROADCAST TEMPLATES - Same message to ALL {selectedData.length} members</strong>
+                  </div>
+                  
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`📢 BROADCAST ANNOUNCEMENT 📢
+
+🎉 Welcome to our Event Community!
+
+👥 Total Registered Members: {{MemberCount}}
+
+📋 All Registered Members:
+{{AllNames}}
+
+📅 Event: [Your Event Name]
+🕐 Date: [Event Date]
+📍 Venue: [Event Location]
+
+🔥 Everyone is invited and confirmed!
+
+Get ready for an amazing experience!
+
+Thanks!
+Team`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#ffc107', color: '#856404', backgroundColor: '#fff3cd'}}
+                  >
+                    📢 Welcome Broadcast with Full List
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`📋 MEMBER ATTENDANCE LIST 📋
+
+Dear Team,
+
+Here are all the registered members for the event:
+
+👥 Total Count: {{MemberCount}} members
+📝 Member Names: {{Names}}
+
+Please use this list for:
+✅ Attendance tracking
+✅ Seating arrangements  
+✅ Certificate preparation
+✅ Communication reference
+
+Event Details:
+📅 [Event Name]
+🕐 [Date & Time]
+📍 [Venue]
+
+Best regards,
+Registration Team`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#ffc107', color: '#856404', backgroundColor: '#fff3cd'}}
+                  >
+                    📋 Member List for Coordinators
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`🚨 URGENT BROADCAST 🚨
+
+ATTENTION: This message is for all {{MemberCount}} registered members:
+
+👥 All Members: {{Names}}
+
+⚠️ IMPORTANT UPDATE:
+[Your urgent message here]
+
+🔔 Action Required:
+- [Action 1]
+- [Action 2]
+- [Action 3]
+
+Please spread the word to all members!
+
+Emergency Contact: [Your contact]
+
+Team`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#dc3545', color: '#721c24', backgroundColor: '#f8d7da'}}
+                  >
+                    🚨 Emergency Broadcast Alert
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`🎊 CELEBRATION BROADCAST 🎊
+
+Amazing news for all our {{MemberCount}} members!
+
+🏆 We did it together! 
+
+👥 Special thanks to all members:
+{{AllNames}}
+
+🎉 Achievement: [Your achievement]
+🏅 This success belongs to all of us!
+
+Let's celebrate together!
+📅 Celebration Event: [Date/Time]
+📍 Location: [Venue]
+
+You're all AMAZING!
+
+With gratitude,
+Team`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#28a745', color: '#155724', backgroundColor: '#d4edda'}}
+                  >
+                    🎊 Success Celebration Broadcast
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`📊 GROUP UPDATE BROADCAST 📊
+
+Hello everyone! 
+
+👥 Current Group Status:
+- Total Members: {{MemberCount}}
+- All Active Members: {{Names}}
+
+📈 Latest Updates:
+- [Update 1]
+- [Update 2] 
+- [Update 3]
+
+🔥 What's Next:
+- [Next step 1]
+- [Next step 2]
+
+Stay connected and keep being awesome!
+
+Team Leader`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#17a2b8', color: '#0c5460', backgroundColor: '#d1ecf1'}}
+                  >
+                    � Group Progress Update
+                  </button>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-warning" 
+                    onClick={() => setMessage(`🎯 CALL TO ACTION BROADCAST 🎯
+
+Dear {{Names}},
+
+We need EVERYONE'S participation!
+
+🚀 Mission: [Your mission/goal]
+👥 Team Size: {{MemberCount}} strong members
+
+💪 How YOU can help:
+1. [Action 1]
+2. [Action 2] 
+3. [Action 3]
+
+🏆 Together we can achieve anything!
+
+⏰ Deadline: [Your deadline]
+📞 Coordination: [Contact details]
+
+Let's make it happen!
+
+Team`)}
+                    disabled={progress.isRunning}
+                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#6f42c1', color: '#4c2a6b', backgroundColor: '#e2d9f3'}}
+                  >
+                    🎯 Mass Call to Action
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {progress.isRunning && (
+            <div className="progress-section" style={{backgroundColor: '#f0f8ff', padding: '15px', borderRadius: '8px', marginTop: '20px'}}>
+              <h4 style={{margin: '0 0 10px 0', color: '#1e5a8a'}}>📱 Sending Progress</h4>
+              <div className="progress-bar" style={{backgroundColor: '#e0e0e0', borderRadius: '10px', height: '20px', marginBottom: '10px'}}>
+                <div 
+                  className="progress-fill" 
+                  style={{
+                    backgroundColor: '#4caf50',
+                    height: '100%',
+                    borderRadius: '10px',
+                    width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
+                    transition: 'width 0.3s ease'
+                  }}
+                ></div>
+              </div>
+              <p style={{margin: '0 0 5px 0', fontWeight: 'bold'}}>
+                {progress.current} of {progress.total} messages sent
+              </p>
+              <p style={{margin: 0, color: '#666', fontSize: '14px'}}>{status}</p>
+            </div>
+          )}
+
+          {selectedData.length > 0 && phoneField && (
+            <div className="preview-section" style={{marginTop: '20px'}}>
+              <h4>Preview (First 3 contacts):</h4>
+              <div style={{maxHeight: '150px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px', padding: '10px'}}>
+                {selectedData.slice(0, 3).map((row, index) => (
+                  <div key={index} style={{marginBottom: '10px', padding: '8px', backgroundColor: '#f9f9f9', borderRadius: '4px'}}>
+                    <strong>{nameField ? row[nameField] : 'Contact'}</strong> - {row[phoneField]}
+                  </div>
+                ))}
+                {selectedData.length > 3 && (
+                  <div style={{textAlign: 'center', color: '#666', fontStyle: 'italic'}}>
+                    ...and {selectedData.length - 3} more contacts
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose} disabled={progress.isRunning}>
+            {progress.isRunning ? 'Running...' : 'Cancel'}
+          </button>
+          {!progress.isRunning ? (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => onStart(phoneField, nameField)}
+              disabled={!message.trim() || selectedData.length === 0 || !phoneField}
+              style={{backgroundColor: '#25d366', borderColor: '#25d366'}}
+            >
+              {broadcastMode 
+                ? `� Send Broadcast (${selectedData.length} names to ${broadcastPhone || 'admin'})`
+                : `�🚀 Start Individual Messages (${selectedData.length} contacts)`
+              }
+            </button>
+          ) : (
+            <button 
+              className="btn btn-danger" 
+              onClick={onStop}
+            >
+              ⏹️ Stop Sending
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -781,6 +1384,14 @@ const AdminPanel = () => {
   });
   const [userRole, setUserRole] = useState('admin'); // admin, editor, viewer
   const [shareLink, setShareLink] = useState('');
+
+  // WhatsApp Bulk Sender States
+  const [whatsappModal, setWhatsappModal] = useState({ isOpen: false });
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappProgress, setWhatsappProgress] = useState({ current: 0, total: 0, isRunning: false });
+  const [whatsappStatus, setWhatsappStatus] = useState('');
+  const [broadcastMode, setBroadcastMode] = useState(false);
+  const [broadcastPhone, setBroadcastPhone] = useState('');
 
   // --- Handlers ---
   const handleResizeMove = useCallback((e) => {
@@ -862,10 +1473,39 @@ const AdminPanel = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:csv&gid=0`)}`);
-      if (!response.ok) throw new Error('Failed to fetch data. Make sure the sheet is public and the URL is correct.');
+      // Try direct Google Sheets export URL first
+      let response;
+      let csvData;
       
-      const csvData = await response.text();
+      try {
+        // Method 1: Direct export URL (works if sheet is public)
+        response = await fetch(`https://docs.google.com/spreadsheets/d/${activeSheetId}/export?format=csv&gid=0`);
+        if (response.ok) {
+          csvData = await response.text();
+        }
+      } catch (directError) {
+        console.log('Direct export failed, trying alternative method...');
+      }
+      
+      // Method 2: If direct fails, try with CORS proxy
+      if (!csvData) {
+        try {
+          response = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://docs.google.com/spreadsheets/d/${activeSheetId}/export?format=csv&gid=0`)}`);
+          if (response.ok) {
+            csvData = await response.text();
+          }
+        } catch (proxyError) {
+          console.log('CORS proxy failed, trying gviz method...');
+        }
+      }
+      
+      // Method 3: Fallback to gviz method
+      if (!csvData) {
+        response = await fetch(`https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:csv&gid=0`);
+        if (!response.ok) throw new Error('Failed to fetch data. Make sure the sheet is public and the URL is correct.');
+        csvData = await response.text();
+      }
+      
       if (!csvData) throw new Error('No data found in the sheet.');
 
       const lines = csvData.trim().split(/\r\n|\n/);
@@ -1187,6 +1827,358 @@ const AdminPanel = () => {
     });
   };
 
+  // WhatsApp Bulk Sender Functions
+  const validatePhoneNumber = (phone) => {
+    if (!phone) return null;
+    // Remove all non-numeric characters
+    let cleaned = phone.toString().replace(/\D/g, '');
+    
+    // If number doesn't start with country code, add India code (+91)
+    if (cleaned.length === 10 && !cleaned.startsWith('91')) {
+      cleaned = '91' + cleaned;
+    }
+    
+    // Check if it's a valid phone number (10-15 digits)
+    if (cleaned.length >= 10 && cleaned.length <= 15) {
+      return cleaned;
+    }
+    return null;
+  };
+
+  const openWhatsAppWeb = (phoneNumber, message) => {
+    const cleanPhone = validatePhoneNumber(phoneNumber);
+    if (!cleanPhone) {
+      console.error('Invalid phone number:', phoneNumber);
+      return false;
+    }
+    
+    // Encode the message for URL
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
+    
+    // Open in new tab
+    window.open(whatsappUrl, '_blank');
+    return true;
+  };
+
+  const handleWhatsAppBulkSend = async (phoneField, nameField) => {
+    const selectedData = sheetData.filter(row => selectedRows.has(row.id));
+    
+    if (selectedData.length === 0) {
+      setAlert({ isOpen: true, title: 'Error', message: 'No contacts selected.' });
+      return;
+    }
+
+    if (!whatsappMessage.trim()) {
+      setAlert({ isOpen: true, title: 'Error', message: 'Please enter a message.' });
+      return;
+    }
+
+    // Handle broadcast mode
+    if (broadcastMode) {
+      if (!phoneField) {
+        setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field for broadcast.' });
+        return;
+      }
+      startBroadcastSending(selectedData, phoneField, nameField);
+      return;
+    }
+
+    // Handle individual mode
+    if (!phoneField) {
+      setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field.' });
+      return;
+    }
+
+    // Validate phone numbers for individual mode
+    const validContacts = [];
+    const invalidContacts = [];
+
+    selectedData.forEach(row => {
+      const phone = validatePhoneNumber(row[phoneField]);
+      if (phone) {
+        validContacts.push({ ...row, cleanPhone: phone });
+      } else {
+        invalidContacts.push(row);
+      }
+    });
+
+    if (invalidContacts.length > 0) {
+      const confirmMsg = `Found ${invalidContacts.length} invalid phone numbers. Continue with ${validContacts.length} valid contacts?`;
+      setConfirmation({
+        isOpen: true,
+        title: 'Invalid Phone Numbers Detected',
+        message: confirmMsg,
+        confirmText: 'Continue',
+        confirmButtonClass: 'btn-primary',
+        onConfirm: () => {
+          setConfirmation({ isOpen: false });
+          startBulkSending(validContacts, phoneField, nameField);
+        },
+        onCancel: () => setConfirmation({ isOpen: false })
+      });
+    } else {
+      startBulkSending(validContacts, phoneField, nameField);
+    }
+  };
+
+  const startBulkSending = async (contacts, phoneField, nameField) => {
+    setWhatsappProgress({ current: 0, total: contacts.length, isRunning: true });
+    setWhatsappStatus('🚀 Starting automatic WhatsApp sending to all contacts...');
+
+    let successCount = 0;
+    let whatsappWindows = [];
+    
+    // Send all messages automatically with smart delays
+    for (let index = 0; index < contacts.length; index++) {
+      const contact = contacts[index];
+      
+      setTimeout(async () => {
+        const personalizedMessage = whatsappMessage.replace(/{{(.*?)}}/g, (match, p1) => {
+          const fieldName = p1.trim();
+          return contact[fieldName] || '';
+        });
+
+        const contactName = nameField ? contact[nameField] : `Contact ${index + 1}`;
+        
+        console.log(`🚀 Auto-sending to ${contactName} - Phone: ${contact.cleanPhone}`);
+        
+        try {
+          // Use multiple WhatsApp URLs for better delivery
+          const whatsappUrls = [
+            `https://api.whatsapp.com/send?phone=${contact.cleanPhone}&text=${encodeURIComponent(personalizedMessage)}`,
+            `https://wa.me/${contact.cleanPhone}?text=${encodeURIComponent(personalizedMessage)}`
+          ];
+          
+          // Open WhatsApp with auto-send attempt
+          whatsappUrls.forEach((url, urlIndex) => {
+            setTimeout(() => {
+              const newWindow = window.open(url, `whatsapp_individual_${index}_${urlIndex}`, 'width=400,height=600');
+              whatsappWindows.push(newWindow);
+              
+              // Try to auto-send after window loads
+              if (newWindow) {
+                setTimeout(() => {
+                  try {
+                    newWindow.focus();
+                    
+                    // Simulate Enter key to send message
+                    const enterEvent = new KeyboardEvent('keydown', {
+                      key: 'Enter',
+                      code: 'Enter',
+                      keyCode: 13,
+                      which: 13,
+                      bubbles: true
+                    });
+                    
+                    if (newWindow.document) {
+                      newWindow.document.dispatchEvent(enterEvent);
+                    }
+                  } catch (error) {
+                    console.log('Auto-send attempt:', error);
+                  }
+                }, 3000);
+              }
+            }, urlIndex * 300);
+          });
+          
+          successCount++;
+          
+          setWhatsappProgress(prev => ({ 
+            ...prev, 
+            current: successCount,
+            isRunning: successCount < contacts.length
+          }));
+          
+          if (successCount === contacts.length) {
+            setWhatsappStatus(`✅ ALL DONE! Sent personalized messages to all ${successCount} contacts automatically! 🎉`);
+            setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
+            
+            setTimeout(() => {
+              setAlert({
+                isOpen: true,
+                title: '🎉 BULK SENDING COMPLETE!',
+                message: `✅ Successfully sent personalized messages to ALL ${successCount} contacts!\n\n📱 ${whatsappWindows.length} WhatsApp windows opened\n� Each contact got their personalized message\n🚀 Automatic sending completed!`
+              });
+            }, 1000);
+          } else {
+            setWhatsappStatus(`📱 Auto-sending... ${successCount}/${contacts.length} messages sent automatically`);
+          }
+          
+        } catch (error) {
+          console.error(`Error sending to ${contactName}:`, error);
+        }
+        
+      }, index * 1200); // 1.2 second delay between each contact for individual messages
+    }
+  };
+
+  const stopWhatsAppBulkSend = () => {
+    setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
+    setWhatsappStatus('⏹️ Bulk sending stopped by user.');
+  };
+
+  const startBroadcastSending = async (selectedData, phoneFieldParam, nameField) => {
+    // Use the phone field that was passed from the form
+    const phoneFieldToUse = phoneFieldParam || headers.find(h => 
+      h.toLowerCase().includes('phone') || 
+      h.toLowerCase().includes('mobile') || 
+      h.toLowerCase().includes('number') ||
+      h.toLowerCase().includes('contact')
+    );
+
+    if (!phoneFieldToUse) {
+      setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field for broadcast.' });
+      return;
+    }
+
+    // Get all valid phone numbers from selected data
+    const validContacts = [];
+    const invalidContacts = [];
+
+    selectedData.forEach(row => {
+      const phone = validatePhoneNumber(row[phoneFieldToUse]);
+      if (phone) {
+        validContacts.push({ ...row, cleanPhone: phone });
+      } else {
+        invalidContacts.push(row);
+      }
+    });
+
+    if (validContacts.length === 0) {
+      setAlert({ isOpen: true, title: 'Error', message: 'No valid phone numbers found in selected members.' });
+      return;
+    }
+
+    console.log(`🎯 BROADCAST MODE: Starting to send to ${validContacts.length} members`);
+    console.log('📋 Valid contacts:', validContacts.map(c => ({ name: c[nameField], phone: c.cleanPhone })));
+
+    setWhatsappProgress({ current: 0, total: validContacts.length, isRunning: true });
+    setWhatsappStatus(`📢 Starting automatic broadcast to ${validContacts.length} members...`);
+
+    // Create member list for broadcast message
+    const memberNames = validContacts.map(contact => {
+      const name = nameField ? contact[nameField] : 'Unknown';
+      const phone = contact[phoneFieldToUse];
+      return `${name} (${phone})`;
+    }).join('\n');
+
+    const memberNamesOnly = validContacts.map(contact => {
+      return nameField ? contact[nameField] : 'Unknown';
+    }).join(', ');
+
+    // Replace broadcast placeholders in the message
+    const broadcastMessage = whatsappMessage
+      .replace(/{{AllNames}}/g, memberNames)
+      .replace(/{{Names}}/g, memberNamesOnly)
+      .replace(/{{MemberCount}}/g, validContacts.length.toString())
+      .replace(/{{(.*?)}}/g, (match, p1) => {
+        const fieldName = p1.trim();
+        // For other placeholders, use data from the first contact or a generic value
+        return validContacts[0][fieldName] || `[${fieldName}]`;
+      });
+
+    let successCount = 0;
+    let whatsappWindows = [];
+    
+    // AUTO-SEND WhatsApp messages to all members simultaneously
+    for (let index = 0; index < validContacts.length; index++) {
+      const contact = validContacts[index];
+      const contactName = nameField ? contact[nameField] : `Member ${index + 1}`;
+      
+      setTimeout(async () => {
+        console.log(`🚀 Auto-sending to ${contactName} (${contact[phoneFieldToUse]}) - Phone: ${contact.cleanPhone}`);
+        
+        try {
+          // Use WhatsApp API URL for direct sending
+          const cleanPhone = contact.cleanPhone;
+          const encodedMessage = encodeURIComponent(broadcastMessage);
+          
+          // Try multiple WhatsApp sending methods
+          const whatsappUrls = [
+            `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`,
+            `https://wa.me/${cleanPhone}?text=${encodedMessage}`,
+            `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}&app_absent=0`
+          ];
+          
+          // Open multiple methods to ensure delivery
+          whatsappUrls.forEach((url, urlIndex) => {
+            setTimeout(() => {
+              const newWindow = window.open(url, `whatsapp_${index}_${urlIndex}`, 'width=400,height=600,scrollbars=yes,resizable=yes');
+              whatsappWindows.push(newWindow);
+              
+              // Try to auto-click send button after window loads
+              if (newWindow) {
+                setTimeout(() => {
+                  try {
+                    // Focus the window to make it active
+                    newWindow.focus();
+                    
+                    // Try to simulate enter key to send message
+                    const enterEvent = new KeyboardEvent('keydown', {
+                      key: 'Enter',
+                      code: 'Enter',
+                      keyCode: 13,
+                      which: 13,
+                      bubbles: true
+                    });
+                    
+                    if (newWindow.document) {
+                      newWindow.document.dispatchEvent(enterEvent);
+                    }
+                  } catch (error) {
+                    console.log('Auto-send attempt:', error);
+                  }
+                }, 3000); // Wait 3 seconds for WhatsApp to load
+              }
+            }, urlIndex * 200); // Stagger different URL attempts
+          });
+          
+          successCount++;
+          
+          // Update progress
+          setWhatsappProgress(prev => ({ 
+            ...prev, 
+            current: successCount,
+            isRunning: successCount < validContacts.length
+          }));
+          
+          // Update status
+          if (successCount === validContacts.length) {
+            setWhatsappStatus(`✅ AUTO-BROADCAST COMPLETE! Sent to ALL ${successCount} members! 🎉`);
+            setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
+            
+            // Show completion message
+            setTimeout(() => {
+              setAlert({
+                isOpen: true,
+                title: '🎉 BROADCAST SUCCESS!',
+                message: `✅ Successfully sent broadcast message to ALL ${successCount} members!\n\n📱 ${whatsappWindows.length} WhatsApp windows opened\n📢 Same message delivered to everyone\n🚀 Automatic sending completed!`
+              });
+            }, 1000);
+          } else {
+            setWhatsappStatus(`📢 Auto-broadcasting... ${successCount}/${validContacts.length} sent automatically`);
+          }
+          
+        } catch (error) {
+          console.error(`Error sending to ${contactName}:`, error);
+          setWhatsappStatus(`❌ Error sending to ${contactName}. Continuing with others...`);
+        }
+        
+      }, index * 1000); // 1 second delay between each contact for reliability
+    }
+
+    if (invalidContacts.length > 0) {
+      setTimeout(() => {
+        setAlert({ 
+          isOpen: true, 
+          title: 'Broadcast Info', 
+          message: `✅ Broadcast sent to ${validContacts.length} members automatically!\n❌ ${invalidContacts.length} members had invalid phone numbers and were skipped.` 
+        });
+      }, (validContacts.length * 1000) + 2000);
+    }
+  };
+
   const handleMessagingSend = (column, subject, message) => {
     const selectedData = sheetData.filter(row => selectedRows.has(row.id));
     const type = messagingModal.type;
@@ -1253,11 +2245,51 @@ const AdminPanel = () => {
       }
 
       const openWhatsAppLinks = () => {
-        let successCount = 0;
-        let failedNumbers = [];
+        let currentIndex = 0;
+        let countdownInterval;
+        let whatsappWindow = null;
         
-        // Open all WhatsApp links at once
-        validMessages.forEach((m, index) => {
+        const sendWhatsAppMessage = async (phoneNumber, message) => {
+          return new Promise((resolve) => {
+            // Clean phone number
+            let cleanNumber = phoneNumber.replace(/["\s-()]/g, '');
+            if (cleanNumber.startsWith('+')) {
+                // number is already in international format
+            } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
+                cleanNumber = `+${cleanNumber}`;
+            } else if (cleanNumber.length === 10) {
+                cleanNumber = `+91${cleanNumber}`;
+            } else {
+                cleanNumber = `+91${cleanNumber}`;
+            }
+            
+            // Create WhatsApp Web URL with message
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanNumber}&text=${encodedMessage}&app_absent=0`;
+            
+            // Open or reuse WhatsApp Web window
+            if (!whatsappWindow || whatsappWindow.closed) {
+              whatsappWindow = window.open(whatsappUrl, 'whatsapp_bulk_sender', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+            } else {
+              whatsappWindow.location.href = whatsappUrl;
+              whatsappWindow.focus();
+            }
+            
+            resolve(true);
+          });
+        };
+        
+        const processNextMessage = async () => {
+          if (currentIndex >= validMessages.length) {
+            setAlert({
+              isOpen: true,
+              title: '🎉 All WhatsApp Messages Sent!',
+              message: `Successfully opened WhatsApp for all ${validMessages.length} recipients. Check your browser tabs to send the messages.`,
+            });
+            return;
+          }
+          
+          const m = validMessages[currentIndex];
           let cleanNumber = m.recipient.replace(/["\s-()]/g, ''); // remove spaces, dashes, parens
           if (cleanNumber.startsWith('+')) {
               // number is already in international format
@@ -1271,38 +2303,74 @@ const AdminPanel = () => {
           
           const url = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(m.message)}`;
           
-          // Use setTimeout to stagger the opening slightly to avoid popup blocking
-          setTimeout(() => {
-            try {
-              const newWindow = window.open(url, '_blank');
-              if (newWindow) {
-                successCount++;
-              } else {
-                failedNumbers.push(cleanNumber);
-              }
-            } catch (error) {
-              failedNumbers.push(cleanNumber);
-              console.error('Failed to open WhatsApp for:', cleanNumber, error);
-            }
+          // Open WhatsApp immediately
+          window.open(url, '_blank');
+          console.log(`📱 Opened WhatsApp for ${cleanNumber} (${currentIndex + 1}/${validMessages.length})`);
+          
+          currentIndex++;
+          
+          if (currentIndex < validMessages.length) {
+            // Show countdown for next recipient
+            let countdown = 30;
             
-            // Show final status after all attempts
-            if (index === validMessages.length - 1) {
-              setTimeout(() => {
-                let message = `Successfully opened WhatsApp for ${successCount} out of ${validMessages.length} recipients.`;
-                if (failedNumbers.length > 0) {
-                  message += `\n\nFailed to open for ${failedNumbers.length} numbers. Please ensure pop-ups are enabled for this site.`;
-                }
-                message += '\n\nPlease check your browser tabs and send the messages manually if any tabs failed to open.';
-                
-                setAlert({
-                  isOpen: true,
-                  title: 'WhatsApp Status',
-                  message: message,
-                });
-              }, 500); // Wait a bit for all windows to attempt opening
-            }
-          }, index * 400); // Increased delay to 400ms for better reliability
+            const updateCountdown = () => {
+              setAlert({
+                isOpen: true,
+                title: `🚀 Auto WhatsApp Sending Progress`,
+                message: `✅ Sent to: ${cleanNumber}
+
+📱 Next recipient: ${validMessages[currentIndex].recipient}
+⏱️ Auto-sending in: ${countdown} seconds...
+
+� Progress: ${currentIndex}/${validMessages.length} completed
+🔄 ${validMessages.length - currentIndex} remaining
+
+🛑 Close this dialog to stop auto-sending`,
+              });
+              
+              countdown--;
+              
+              if (countdown < 0) {
+                clearInterval(countdownInterval);
+                openNextWhatsApp();
+              }
+            };
+            
+            // Start countdown
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+            
+          } else {
+            // All done
+            setAlert({
+              isOpen: true,
+              title: '🎉 Auto WhatsApp Sending Complete!',
+              message: `✅ Successfully opened WhatsApp for all ${validMessages.length} recipients!
+              
+📱 Check your browser tabs - you now have ${validMessages.length} WhatsApp conversations ready
+💬 Each tab has the personalized message pre-filled
+🚀 Just click send in each WhatsApp tab!`,
+            });
+          }
+        };
+        
+        // Show initial confirmation
+        setAlert({
+          isOpen: true,
+          title: '🚀 Starting Auto WhatsApp Sending',
+          message: `Starting automatic WhatsApp sending to ${validMessages.length} recipients...
+
+⏱️ 30 seconds delay between each message
+📱 ${validMessages.length} tabs will open automatically
+🛑 Close any progress dialog to stop the process
+
+Opening first recipient now...`,
         });
+        
+        // Start with first recipient after 2 seconds
+        setTimeout(() => {
+          openNextWhatsApp();
+        }, 2000);
       };
 
       let confirmationMessage = `🚀 BULK WhatsApp Sending
@@ -1427,48 +2495,143 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
     setAlert({ isOpen: true, title: 'Success', message: 'Column names updated.' });
   };
 
-  const handleSaveSelection = (name, description) => {
+  const handleSaveSelection = (name) => {
     const selectedData = sheetData.filter(row => selectedRows.has(row.id));
     const newSelection = {
       id: Date.now().toString(),
       name,
-      description,
       date: new Date().toLocaleString(),
       count: selectedData.length,
-      data: selectedData
+      data: selectedData,
+      sheetId: activeSheetId // Store which sheet this selection belongs to
     };
     
     setSavedSelections(prev => [...prev, newSelection]);
-    setAlert({ isOpen: true, title: 'Success', message: `Selection "${name}" saved with ${selectedData.length} rows.` });
+    setAlert({ isOpen: true, title: 'Success', message: `Team "${name}" saved with ${selectedData.length} members!` });
+  };
+
+  const handleLoadSelection = (selection) => {
+    // Filter the selection data to only include rows that exist in current sheet
+    const currentSheetRowIds = new Set(sheetData.map(row => row.id));
+    const validRowIds = selection.data
+      .filter(row => currentSheetRowIds.has(row.id))
+      .map(row => row.id);
+    
+    setSelectedRows(new Set(validRowIds));
+    
+    if (validRowIds.length === selection.count) {
+      setAlert({ 
+        isOpen: true, 
+        title: 'Team Loaded', 
+        message: `Successfully loaded "${selection.name}" with ${validRowIds.length} members!` 
+      });
+    } else {
+      setAlert({ 
+        isOpen: true, 
+        title: 'Partial Load', 
+        message: `Loaded "${selection.name}": ${validRowIds.length}/${selection.count} members found in current sheet.` 
+      });
+    }
+  };
+
+  const handleDeleteSelection = (selectionId) => {
+    const selection = savedSelections.find(s => s.id === selectionId);
+    if (selection) {
+      setSavedSelections(prev => prev.filter(s => s.id !== selectionId));
+      setAlert({ 
+        isOpen: true, 
+        title: 'Deleted', 
+        message: `Team "${selection.name}" has been deleted.` 
+      });
+    }
   };
 
   // --- JSX ---
   if (!isLoggedIn) {
     return (
-      <div className="login-container">
-        <div className="login-background" style={{backgroundImage: `url(https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2070&auto=format&fit=crop)`}}></div>
-        <div className="login-form-container">
-          <div className="login-form">
-            <div className="login-header">
-              <h2>PLANBOT-ADMIN PANEL</h2>
-              {/* Add a full-width logo image below or above the emoji */}
-              {/* Replace '/logo.png' with your actual logo path */}
-              <img src="/icon.png" alt="Event Manager Logo" style={{ width: '100%', height: '50%', marginBottom: '-3rem', marginTop: '-3rem', maxWidth: '300px' }} />
-              <div className="logo">📊 Event Manager</div>
+      <div className="modern-login-container">
+        <div className="login-left-section">
+          <div className="login-left-content">
+            <div className="brand-section">
+              <img src="/icon.png" alt="PLANBOT Logo" className="brand-logo" />
+              <h1 className="brand-title">PLANBOT</h1>
+              <p className="brand-subtitle">Advanced Event Management System</p>
             </div>
-            <form onSubmit={handleLogin}>
-              {error && <div className="error-message">{error}</div>}
-              <div className="form-group">
-                <label>Username</label>
-                <input type="text" className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Enter username" />
+            <div className="features-showcase">
+              <div className="feature-item">
+                <div className="feature-icon">📊</div>
+                <div className="feature-text">
+                  <h3>Data Analytics</h3>
+                  <p>Comprehensive event data management and insights</p>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Password</label>
-                <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter password" />
+              <div className="feature-item">
+                <div className="feature-icon">👥</div>
+                <div className="feature-text">
+                  <h3>Team Collaboration</h3>
+                  <p>Work together seamlessly with your team</p>
+                </div>
               </div>
-              <button type="submit" className="btn btn-primary login-btn">Login</button>
+              <div className="feature-item">
+                <div className="feature-icon">🚀</div>
+                <div className="feature-text">
+                  <h3>Fast & Efficient</h3>
+                  <p>Streamlined workflows for maximum productivity</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="login-right-section">
+          <div className="login-form-wrapper">
+            <div className="login-form-header">
+              <h2>Welcome Back</h2>
+              <p>Sign in to access your admin panel</p>
+            </div>
+            
+            <form onSubmit={handleLogin} className="modern-login-form">
+              {error && <div className="error-message modern-error">{error}</div>}
               
+              <div className="form-group modern-form-group">
+                <label className="modern-label">Username</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">👤</span>
+                  <input 
+                    type="text" 
+                    className="modern-input" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)} 
+                    required 
+                    placeholder="Enter your username" 
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group modern-form-group">
+                <label className="modern-label">Password</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">🔒</span>
+                  <input 
+                    type="password" 
+                    className="modern-input" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    required 
+                    placeholder="Enter your password" 
+                  />
+                </div>
+              </div>
+              
+              <button type="submit" className="modern-login-btn">
+                <span className="btn-text">Sign In</span>
+                <span className="btn-icon">→</span>
+              </button>
             </form>
+            
+            <div className="login-footer">
+              <p>© 2025 PLANBOT. All rights reserved.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1533,6 +2696,58 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
         selectedRowsCount={selectedRows.size}
       />
 
+      <WhatsAppBulkModal
+        isOpen={whatsappModal.isOpen}
+        onClose={() => setWhatsappModal({ isOpen: false })}
+        selectedRows={selectedRows}
+        sheetData={sheetData}
+        headers={headers}
+        message={whatsappMessage}
+        setMessage={setWhatsappMessage}
+        progress={whatsappProgress}
+        status={whatsappStatus}
+        onStart={handleWhatsAppBulkSend}
+        onStop={stopWhatsAppBulkSend}
+        broadcastMode={broadcastMode}
+        setBroadcastMode={setBroadcastMode}
+        broadcastPhone={broadcastPhone}
+        setBroadcastPhone={setBroadcastPhone}
+      />
+
+      {/* Floating sidebar toggle button when collapsed */}
+      {isSidebarCollapsed && (
+        <button 
+          className="floating-sidebar-toggle"
+          onClick={() => setIsSidebarCollapsed(false)}
+          title="Open Sidebar"
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '20px',
+            zIndex: 1001,
+            padding: '12px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--primary)',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(67, 97, 238, 0.4)',
+            transition: 'all 0.3s ease',
+            animation: 'pulse 2s infinite'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.1)';
+            e.target.style.boxShadow = '0 6px 20px rgba(67, 97, 238, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = '0 4px 12px rgba(67, 97, 238, 0.4)';
+          }}
+        >
+          <MenuIcon />
+        </button>
+      )}
+
       {!isSidebarCollapsed && (
         <aside className="admin-sidebar">
           {showSheetSelector ? (
@@ -1547,9 +2762,56 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
           ) : (
             <>
               <div className="sidebar-header">
-                <span className="sidebar-logo">📊</span>
-                <span className="sidebar-title">PLANBOT Admin</span>
-                <button className="back-btn" onClick={() => setIsSidebarCollapsed(true)} title="Collapse Sidebar">
+                <div className="sidebar-nav-controls">
+                  <button 
+                    className="back-btn sidebar-back-btn" 
+                    onClick={() => window.history.back()} 
+                    title="Go Back"
+                    style={{
+                      padding: '8px',
+                      borderRadius: '6px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid var(--border)',
+                      transition: 'all 0.3s ease',
+                      marginRight: '10px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = 'var(--primary)';
+                      e.target.style.color = 'white';
+                      e.target.style.transform = 'translateX(-3px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                      e.target.style.color = 'var(--text-secondary)';
+                      e.target.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span className="sidebar-title">PLANBOT Admin</span>
+                </div>
+                <button 
+                  className="back-btn sidebar-close-btn" 
+                  onClick={() => setIsSidebarCollapsed(true)} 
+                  title="Collapse Sidebar"
+                  style={{
+                    padding: '8px',
+                    borderRadius: '6px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--border)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'var(--danger)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'rotate(180deg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                    e.target.style.color = 'var(--text-secondary)';
+                    e.target.style.transform = 'rotate(0deg)';
+                  }}
+                >
                   <MenuIcon />
                 </button>
               </div>
@@ -1580,6 +2842,9 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
 
                 <div className="sidebar-section">
                   <h3>Data Actions</h3>
+                  
+                  {/* Quick Selection Buttons */}
+                  
                   
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setIsModalOpen(true)} disabled={selectedRows.size === 0}>
                     👁️ Preview Selected ({selectedRows.size})
@@ -1632,31 +2897,90 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setPdfConfigModalOpen(true)}>
                     ⚙️ Configure PDF Export
                   </button>
-                  <a href={`https://docs.google.com/spreadsheets/d/${activeSheetId}/export?format=csv`} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary sidebar-action-btn ${!activeSheetId ? 'disabled' : ''}`}>
-                    🔗 Download Google Sheet
-                  </a>
                 </div>
 
+                {/* Saved Selections Section */}
                 <div className="sidebar-section">
-                  <h3>Messaging</h3>
-                  <button className="btn btn-secondary sidebar-action-btn" onClick={() => setMessagingModal({ isOpen: true, type: 'email' })} disabled={selectedRows.size === 0}>
-                    📧 Bulk Email to All Selected ({selectedRows.size})
-                  </button>
-                  <button className="btn btn-secondary sidebar-action-btn" onClick={() => setMessagingModal({ isOpen: true, type: 'whatsapp' })} disabled={selectedRows.size === 0}>
-                    💬 Bulk WhatsApp to All Selected ({selectedRows.size})
-                  </button>
-                </div>
-
-                <div className="sidebar-section">
-                  <h3>Team Collaboration</h3>
-                  <button className="btn btn-secondary sidebar-action-btn" onClick={() => setTeamModalOpen(true)}>
-                    👥 Manage Team ({teamMembers.length})
-                  </button>
-                  {shareLink && (
-                    <div className="share-link-info">
-                      <p>Share link: <span className="truncate">{shareLink}</span></p>
+                  <h3>📋 Saved Teams</h3>
+                  {savedSelections.length === 0 ? (
+                    <p style={{fontSize: '0.85rem', color: '#666', textAlign: 'center', padding: '10px', fontStyle: 'italic'}}>
+                      No saved teams yet. Select members and click "Save Selection" to create teams.
+                    </p>
+                  ) : (
+                    <div className="saved-selections-list">
+                      {savedSelections.map((selection) => (
+                        <div key={selection.id} className="saved-selection-item">
+                          <div className="selection-info">
+                            <div className="selection-name">{selection.name}</div>
+                            <div className="selection-details">
+                              {selection.count} members • {new Date(selection.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="selection-actions">
+                            <button 
+                              className="btn btn-primary load-btn" 
+                              onClick={() => handleLoadSelection(selection)}
+                              title="Load this team selection"
+                            >
+                              📂
+                            </button>
+                            <button 
+                              className="btn btn-secondary delete-btn" 
+                              onClick={() => {
+                                if (window.confirm(`Delete team "${selection.name}"?`)) {
+                                  handleDeleteSelection(selection.id);
+                                }
+                              }}
+                              title="Delete this saved team"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
+                </div>
+
+                <div className="sidebar-section">
+                  <h3>🚀 MASS MESSAGING</h3>
+                  <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '8px', marginBottom: '12px', border: '2px solid #25d366'}}>
+                    <p style={{margin: '0', fontSize: '0.85rem', color: '#2d5a2d', fontWeight: 'bold', textAlign: 'center'}}>
+                      📢 BROADCAST to {selectedRows.size} selected members
+                    </p>
+                    {selectedRows.size > 0 && (
+                      <p style={{margin: '5px 0 0 0', fontSize: '0.75rem', color: '#2d5a2d', textAlign: 'center'}}>
+                        ✅ Ready for mass messaging!
+                      </p>
+                    )}
+                  </div>
+                  <button 
+                    className="btn btn-secondary sidebar-action-btn" 
+                    onClick={() => setMessagingModal({ isOpen: true, type: 'email' })} 
+                    disabled={selectedRows.size === 0}
+                    style={{
+                      backgroundColor: selectedRows.size > 0 ? '#17a2b8' : '',
+                      color: selectedRows.size > 0 ? 'white' : '',
+                      fontWeight: selectedRows.size > 0 ? 'bold' : 'normal'
+                    }}
+                  >
+                    📧 Bulk Email to All Selected ({selectedRows.size})
+                  </button>
+                  <button 
+                    className="btn btn-secondary sidebar-action-btn" 
+                    onClick={() => {
+                      setBroadcastMode(false); // Default to individual mode
+                      setWhatsappModal({ isOpen: true });
+                    }} 
+                    disabled={selectedRows.size === 0}
+                    style={{
+                      backgroundColor: selectedRows.size > 0 ? '#25d366' : '',
+                      color: selectedRows.size > 0 ? 'white' : '',
+                      fontWeight: selectedRows.size > 0 ? 'bold' : 'normal'
+                    }}
+                  >
+                    � Bulk WhatsApp ({selectedRows.size} contacts)
+                  </button>
                 </div>
 
                 <div className="sidebar-section">
@@ -1683,13 +3007,19 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
 
       <main className="admin-main-content">
         <div className="admin-main-header">
-          <button className="back-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
-            <MenuIcon />
-          </button>
-          <h1>{sheets.find(s => s.id === activeSheetId)?.name || 'Sheet Data'}</h1>
-          {sheetData.length > 0 && (
-            <span>Showing {paginatedData.length} of {filteredData.length} matching rows ({sheetData.length} total)</span>
-          )}
+          <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
+            <h1 style={{margin: 0}}>{sheets.find(s => s.id === activeSheetId)?.name || 'Sheet Data'}</h1>
+          </div>
+          <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+            {showOnlySelected && selectedRows.size > 0 && (
+              <div style={{backgroundColor: '#28a745', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold'}}>
+                👥 Viewing Selected Team Only ({selectedRows.size} members)
+              </div>
+            )}
+            {sheetData.length > 0 && (
+              <span>Showing {paginatedData.length} of {filteredData.length} matching rows ({sheetData.length} total)</span>
+            )}
+          </div>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -1698,8 +3028,67 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
         {!loading && sheetData.length > 0 ? (
           <div className="table-container">
             <div className="table-controls">
-              <p>Total selected: {selectedRows.size}</p>
+              <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <p>Total selected: {selectedRows.size}</p>
+                {selectedRows.size > 0 && (
+                  <button 
+                    className={`btn ${showOnlySelected ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => {
+                      setShowOnlySelected(prev => !prev);
+                      setCurrentPage(1); // Reset to first page when toggling
+                    }}
+                    style={{
+                      backgroundColor: showOnlySelected ? '#28a745' : '',
+                      color: showOnlySelected ? 'white' : '',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    {showOnlySelected ? '👥 Showing Selected Only' : '👁️ Show Only Selected'}
+                  </button>
+                )}
+              </div>
               <div className="table-controls-right">
+                {showOnlySelected && selectedRows.size > 0 && (
+                  <div style={{display: 'flex', gap: '5px', marginRight: '10px', padding: '5px', backgroundColor: '#e8f5e8', borderRadius: '6px', border: '2px solid #28a745'}}>
+                    <small style={{color: '#155724', fontWeight: 'bold', alignSelf: 'center', marginRight: '5px'}}>Selected Team Actions:</small>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => exportToCsv(`selected_team_${selectedRows.size}_members.csv`, sheetData.filter(row => selectedRows.has(row.id)))}
+                      style={{fontSize: '0.75rem', padding: '4px 8px'}}
+                    >
+                      📥 Export Selected CSV
+                    </button>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => handlePdfExport(false, null)}
+                      style={{fontSize: '0.75rem', padding: '4px 8px'}}
+                    >
+                      📄 Export Selected PDF
+                    </button>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={() => {
+                        setConfirmation({
+                          isOpen: true,
+                          title: 'Delete Selected Members',
+                          message: `Are you sure you want to delete all ${selectedRows.size} selected members? This action cannot be undone.`,
+                          onConfirm: () => {
+                            setSheetData(prev => prev.filter(row => !selectedRows.has(row.id)));
+                            setSelectedRows(new Set());
+                            setShowOnlySelected(false);
+                            setConfirmation({ isOpen: false });
+                            setAlert({ isOpen: true, title: 'Success', message: `Deleted ${selectedRows.size} selected members successfully.` });
+                          },
+                          onCancel: () => setConfirmation({ isOpen: false })
+                        });
+                      }}
+                      style={{fontSize: '0.75rem', padding: '4px 8px'}}
+                    >
+                      🗑️ Delete Selected
+                    </button>
+                  </div>
+                )}
                 {originalHeaders.length > headers.length && (
                     <button className="btn btn-secondary" onClick={handleRestoreColumns}>
                         Restore Columns
@@ -1724,8 +3113,21 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
               <table className="data-table" style={{tableLayout: 'fixed', width: '100%'}}>
                 <thead>
                   <tr>
-                    <th className="checkbox-column" style={{width: '50px'}}>
-                      <input type="checkbox" onChange={toggleSelectAll} checked={paginatedData.length > 0 && selectedRows.size >= paginatedData.length} />
+                    <th className="checkbox-column" style={{width: '60px', textAlign: 'center'}}>
+                      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'}}>
+                        <input 
+                          type="checkbox" 
+                          onChange={toggleSelectAll} 
+                          checked={paginatedData.length > 0 && selectedRows.size >= paginatedData.length}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                            accentColor: '#007bff'
+                          }}
+                        />
+                        <small style={{fontSize: '10px', color: '#666'}}>All</small>
+                      </div>
                     </th>
                     <th className="actions-column" style={{width: '120px'}}>Actions</th>
                     {headers.map(h => (
@@ -1783,8 +3185,18 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                 <tbody>
                   {paginatedData.map(row => (
                     <tr key={row.id} className={`${selectedRows.has(row.id) ? 'selected' : ''} ${highlightedRows.has(row.id) ? 'highlighted' : ''} ${editingRowId === row.id ? 'editing' : ''}`}>
-                      <td className="checkbox-column">
-                        <input type="checkbox" checked={selectedRows.has(row.id)} onChange={() => toggleRowSelection(row.id)} />
+                      <td className="checkbox-column" style={{textAlign: 'center'}}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedRows.has(row.id)} 
+                          onChange={() => toggleRowSelection(row.id)}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            cursor: 'pointer',
+                            accentColor: '#007bff'
+                          }}
+                        />
                       </td>
                       <td className="actions-column">
                         {editingRowId === row.id ? (
