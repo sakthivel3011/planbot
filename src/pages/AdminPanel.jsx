@@ -138,173 +138,34 @@ const ColumnWidthsPromptModal = ({ isOpen, title, headers, onConfirm, onCancel }
 };
 
 const CellContent = ({ content }) => {
-  const urlRegex = /^(https?:\/\/[^\s\/$.?#].[^\s]*)$/i;
-  if (typeof content === 'string' && urlRegex.test(content)) {
-    return <a href={content} target="_blank" rel="noopener noreferrer">{content}</a>;
+  // Improved URL regex to handle more URL patterns including Google Drive links
+  const urlRegex = /^(https?:\/\/[^\s]+)$/i;
+  
+  if (typeof content === 'string' && content.trim()) {
+    const trimmedContent = content.trim();
+    
+    // Check if it's a URL
+    if (urlRegex.test(trimmedContent)) {
+      return (
+        <a 
+          href={trimmedContent} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            color: '#007bff',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            wordBreak: 'break-all'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {trimmedContent.length > 50 ? `${trimmedContent.substring(0, 50)}...` : trimmedContent}
+        </a>
+      );
+    }
   }
-  return String(content);
-};
-
-const emailTemplates = {
-    raaga2k25: () => `Dear {{Name}},
-
-Thank you for registering for RAAGA-2K25!
-
-Your registration has been confirmed. We look forward to seeing you at the event.
-
-Best regards,
-The RAAGA-2K25 Team`,
-    registration: (eventName) => `Dear {{Name}},
-
-Thank you for registering for ${eventName}!
-
-Your registration has been confirmed. We look forward to seeing you at the event.
-
-Best regards,
-The ${eventName} Team`,
-    reminder: (eventName) => `Hi {{Name}},
-
-Just a friendly reminder that ${eventName} is coming up soon! We're excited to see you there.
-
-Event Details:
-Date: [Event Date]
-Time: [Event Time]
-Location: [Event Location]
-
-Best,
-The ${eventName} Team`,
-    thankyou: (eventName) => `Dear {{Name}},
-
-Thank you for attending ${eventName}! We hope you had a great time.
-
-We would love to hear your feedback. Please reply to this email with your thoughts.
-
-Best regards,
-The ${eventName} Team`,
-    feedback: (eventName) => `Hi {{Name}},
-
-We'd love to get your feedback on ${eventName}. Please take a moment to fill out our survey: [Survey Link]
-
-Your feedback is important to us and will help us improve future events.
-
-Thanks,
-The ${eventName} Team`,
-    promo: (eventName) => `Hello {{Name}},
-
-As a valued member of our community, we're excited to offer you a special discount for our next event!
-
-Use code PROMO25 for 25% off your ticket for [Next Event Name].
-
-We hope to see you there!
-
-Best,
-The ${eventName} Team`,
-  };
-
-const MessagingModal = ({ isOpen, title, headers, onSend, onCancel, type }) => {
-  const [column, setColumn] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [template, setTemplate] = useState('');
-  const [eventName, setEventName] = useState('RAAGA-2K25');
-
-  useEffect(() => {
-    if (isOpen) {
-      if (headers.length > 0) {
-        let defaultColumn = headers[0];
-        if (type === 'email') {
-          const emailHeader = headers.find(h => h.toLowerCase().includes('email'));
-          if (emailHeader) defaultColumn = emailHeader;
-        } else if (type === 'whatsapp') {
-          const phoneHeader = headers.find(h => h.toLowerCase().includes('phone') || h.toLowerCase().includes('whatsapp'));
-          if (phoneHeader) defaultColumn = phoneHeader;
-        }
-        setColumn(defaultColumn);
-      }
-      setTemplate('raaga2k25');
-      setEventName('RAAGA-2K25');
-      if (type === 'email') {
-          setSubject('Regarding RAAGA-2K25'); // Default subject
-      }
-    }
-  }, [headers, type, isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (template in emailTemplates) {
-        setMessage(emailTemplates[template](eventName));
-      } else if (template === 'custom') {
-        setMessage('');
-      }
-    }
-  }, [template, eventName, isOpen]);
-
-  if (!isOpen) return null;
-
-  const getColumnLabel = () => {
-    if (type === 'email') return 'Select column with email addresses';
-    if (type === 'whatsapp') return 'Select column with phone numbers';
-    return 'Select Column';
-  };
-
-  return (
-    <div className="confirm-modal-backdrop">
-      <div className="confirm-modal" style={{maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto'}}>
-        <h3>{title}</h3>
-        <div className="form-group">
-          <label>{getColumnLabel()}</label>
-          <select className="form-input" value={column} onChange={(e) => setColumn(e.target.value)}>
-            {headers.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-        </div>
-        {type === 'email' && (
-          <div className="form-group">
-            <label>Subject</label>
-            <input 
-              type="text"
-              className="form-input"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
-          </div>
-        )}
-        <div className="form-group">
-          <label>Template</label>
-          <select className="form-input" value={template} onChange={(e) => setTemplate(e.target.value)}>
-            <option value="raaga2k25">RAAGA-2K25 Registration</option>
-            <option value="culturalClub">Cultural Club Welcome</option>
-            <option value="musicClub">Music Club Welcome</option>
-            <option value="registration">Generic Registration</option>
-            <option value="reminder">Event Reminder</option>
-            <option value="thankyou">Thank You</option>
-            <option value="feedback">Feedback Request</option>
-            <option value="promo">Promotional Offer</option>
-            <option value="custom">Custom Message</option>
-          </select>
-        </div>
-        {template !== 'custom' && (
-          <div className="form-group">
-            <label>Event Name</label>
-            <input 
-              type="text"
-              className="form-input"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-            />
-          </div>
-        )}
-        <div className="form-group">
-          <label>Message</label>
-          <textarea className="form-input" rows="10" value={message} onChange={(e) => setMessage(e.target.value)}></textarea>
-          <small>You can use placeholders like {'{{Column Name}}'}. For example: {'{{Name}}'}.</small>
-        </div>
-        <div className="confirm-modal-actions">
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSend(column, subject, message)}>Send All</button>
-        </div>
-      </div>
-    </div>
-  );
+  
+  return String(content || '');
 };
 
 const ColumnSelectorModal = ({ isOpen, headers, onConfirm, onCancel, title }) => {
@@ -421,9 +282,9 @@ const SheetSelector = ({ sheets, activeSheet, onSelectSheet, onAddSheet, onDelet
             key={sheet.id}
             className={`sheet-item ${activeSheet === sheet.id ? 'active' : ''}`}
           >
-            <span className="sheet-icon" onClick={() => onSelectSheet(sheet.id)}>📊</span>
-            <span className="sheet-name" onClick={() => onSelectSheet(sheet.id)}>{sheet.name}</span>
-            <button className="action-btn delete-btn" title="Delete Sheet" onClick={() => onDeleteSheet(sheet.id)}>
+            <span className="sheet-icon" onClick={(e) => { e.stopPropagation(); onSelectSheet(sheet.id); }}>📊</span>
+            <span className="sheet-name" onClick={(e) => { e.stopPropagation(); onSelectSheet(sheet.id); }}>{sheet.name}</span>
+            <button className="action-btn delete-btn" title="Delete Sheet" onClick={(e) => { e.stopPropagation(); onDeleteSheet(sheet.id); }}>
               <span className="icon-delete"></span>
             </button>
           </div>
@@ -710,611 +571,6 @@ const SaveSelectedRowsModal = ({ isOpen, onClose, onSave, selectedRowsCount }) =
   );
 };
 
-// WhatsApp Bulk Sender Modal
-const WhatsAppBulkModal = ({ isOpen, onClose, selectedRows, sheetData, headers, message, setMessage, progress, status, onStart, onStop, broadcastMode, setBroadcastMode, broadcastPhone, setBroadcastPhone }) => {
-  const [phoneField, setPhoneField] = useState('');
-  const [nameField, setNameField] = useState('');
-
-  // Auto-detect phone and name fields
-  useEffect(() => {
-    if (isOpen && headers.length > 0) {
-      // Look for phone number field
-      const phoneFields = headers.filter(h => 
-        h.toLowerCase().includes('phone') || 
-        h.toLowerCase().includes('mobile') || 
-        h.toLowerCase().includes('number') ||
-        h.toLowerCase().includes('contact')
-      );
-      if (phoneFields.length > 0) {
-        setPhoneField(phoneFields[0]);
-      }
-
-      // Look for name field
-      const nameFields = headers.filter(h => 
-        h.toLowerCase().includes('name') || 
-        h.toLowerCase().includes('first') ||
-        h.toLowerCase().includes('full')
-      );
-      if (nameFields.length > 0) {
-        setNameField(nameFields[0]);
-      }
-      
-      // Default to individual mode (not broadcast)
-      setBroadcastMode(false);
-    }
-  }, [isOpen, headers]);
-
-  if (!isOpen) return null;
-
-  const selectedData = sheetData.filter(row => selectedRows.has(row.id));
-
-  return (
-    <div className="whatsapp-modal-backdrop">
-      <div className="whatsapp-modal-content">
-        <div className="whatsapp-modal-header">
-          <h2>🚀 WhatsApp Bulk Sender</h2>
-          <button onClick={onClose} className="whatsapp-modal-close" disabled={progress.isRunning}>&times;</button>
-        </div>
-        <div className="whatsapp-modal-body">
-          <div className="whatsapp-info" style={{backgroundColor: '#e8f5e8', padding: '15px', borderRadius: '8px', marginBottom: '20px'}}>
-            <h3 style={{color: '#2d5a2d', margin: '0 0 10px 0'}}>✅ AUTOMATIC Individual Messaging:</h3>
-            <ul style={{margin: 0, paddingLeft: '20px', color: '#2d5a2d'}}>
-              <li>📱 <strong>Default: Individual Messages</strong> - Each member gets their own personalized message ({selectedData.length} contacts)</li>
-              <li>� <strong>AUTO-SENDING:</strong> Messages sent automatically to each person individually</li>
-              <li>� <strong>Personalized:</strong> Use {'{{Name}}'}, {'{{Phone}}'} etc. for custom messages to each member</li>
-              <li>⚡ Each member receives their own WhatsApp message with their personal details</li>
-              <li>📊 Real-time progress tracking as each message is sent</li>
-              <li>🎯 Smart delays prevent blocking and ensure delivery to each person</li>
-              <li>✨ Perfect for registration confirmations, personal invites, individual updates</li>
-              <li>🔥 Works on both WhatsApp Web and Mobile App</li>
-            </ul>
-          </div>
-
-          <div className="form-group">
-            <label>Phone Number Field</label>
-            <select 
-              className="form-input" 
-              value={phoneField} 
-              onChange={(e) => setPhoneField(e.target.value)}
-              disabled={progress.isRunning}
-            >
-              <option value="">Select phone number column</option>
-              {headers.map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Name Field (Optional)</label>
-            <select 
-              className="form-input" 
-              value={nameField} 
-              onChange={(e) => setNameField(e.target.value)}
-              disabled={progress.isRunning}
-            >
-              <option value="">Select name column (optional)</option>
-              {headers.map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Sending Mode</label>
-            <div className="broadcast-mode-toggle" style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px'}}>
-              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '12px 16px', border: '3px solid #ddd', borderRadius: '8px', backgroundColor: !broadcastMode ? '#25d366' : '#f8f9fa', color: !broadcastMode ? 'white' : '#333', transition: 'all 0.3s ease', fontWeight: 'bold'}}>
-                <input 
-                  type="radio" 
-                  name="sendingMode" 
-                  checked={!broadcastMode}
-                  onChange={() => setBroadcastMode(false)}
-                  disabled={progress.isRunning}
-                  style={{marginRight: '12px', transform: 'scale(1.2)'}}
-                />
-                📱 Individual Messages - Send personalized message to each person separately
-              </label>
-              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '12px 16px', border: '3px solid #ddd', borderRadius: '8px', backgroundColor: broadcastMode ? '#ff6b6b' : '#f8f9fa', color: broadcastMode ? 'white' : '#333', transition: 'all 0.3s ease', fontWeight: 'bold', borderColor: broadcastMode ? '#ff6b6b' : '#ddd'}}>
-                <input 
-                  type="radio" 
-                  name="sendingMode" 
-                  checked={broadcastMode}
-                  onChange={() => setBroadcastMode(true)}
-                  disabled={progress.isRunning}
-                  style={{marginRight: '12px', transform: 'scale(1.2)'}}
-                />
-                📢 BROADCAST MODE - Send SAME message to ALL {selectedData.length} members
-              </label>
-            </div>
-          </div>
-
-          {broadcastMode && (
-            <div style={{backgroundColor: '#fff3cd', padding: '20px', borderRadius: '10px', marginBottom: '20px', border: '3px solid #ffc107'}}>
-              <h3 style={{margin: '0 0 15px 0', color: '#856404', textAlign: 'center'}}>📢 BROADCAST MODE ACTIVE</h3>
-              <div style={{backgroundColor: '#ffffff', padding: '15px', borderRadius: '8px', marginBottom: '15px'}}>
-                <h4 style={{margin: '0 0 10px 0', color: '#856404'}}>🎯 What will happen:</h4>
-                <ul style={{margin: '0', paddingLeft: '20px', color: '#856404'}}>
-                  <li><strong>✅ SAME message to ALL {selectedData.length} selected members</strong></li>
-                  <li><strong>✅ Use {'{{AllNames}}'}, {'{{Names}}'}, {'{{MemberCount}}'} in your message</strong></li>
-                  <li><strong>✅ Perfect for announcements, member lists, group updates</strong></li>
-                  <li><strong>✅ All {selectedData.length} WhatsApp tabs will open simultaneously</strong></li>
-                </ul>
-              </div>
-              <div style={{textAlign: 'center', fontSize: '14px', color: '#856404'}}>
-                <strong>💡 TIP:</strong> Use the special broadcast templates below for better results!
-              </div>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label>Message Template</label>
-            <textarea
-              className="form-input"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Enter your message here. Use {{Name}} to personalize with names."
-              rows="4"
-              disabled={progress.isRunning}
-            />
-            <small style={{color: '#666', marginTop: '5px', display: 'block'}}>
-              Tip: Use {'{{Name}}'}, {'{{Phone}}'}, or any column name in double curly braces for personalization
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label>Quick Templates</label>
-            <div className="template-buttons" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px'}}>
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hi {{Name}}! 👋
-
-Thank you for registering for our upcoming event!
-
-� Your Personal Details:
-👤 Name: {{Name}}
-📱 Phone: {{Phone}}
-📧 Email: {{Email}}
-
-�📅 Event Details:
-🕐 Date & Time: [Add your event date/time]
-📍 Venue: [Add your venue]
-
-We're excited to see you there! Please arrive 15 minutes early.
-
-For any queries, feel free to contact us.
-
-Best regards,
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                📅 Personal Registration Confirmation
-              </button>
-              
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Dear {{Name}},
-
-🔔 Reminder: Your event is coming up soon!
-
-📅 Event: [Event Name]
-🕐 Time: [Time]
-📍 Location: [Venue]
-
-Don't forget to bring:
-✅ Your registration confirmation
-✅ Valid ID
-✅ [Any other requirements]
-
-See you there!
-
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                🔔 Event Reminder
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hi {{Name}}! 🙏
-
-Thank you for attending our event! We hope you had a great experience.
-
-🌟 We'd love your feedback:
-- How was the event?
-- What did you like most?
-- Any suggestions for improvement?
-
-Your feedback helps us improve future events.
-
-Thanks again!
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                🙏 Thank You Message
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hello {{Name}}! 🎉
-
-We have an exciting announcement!
-
-🚀 Special Offer: [Your offer details]
-⏰ Valid until: [Date]
-💰 Discount: [Discount details]
-
-Don't miss out on this limited-time opportunity!
-
-Contact us for more details.
-
-Best regards,
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                🎉 Promotion/Offer
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hi {{Name}}!
-
-Hope you're doing well! 😊
-
-We wanted to reach out regarding [your reason].
-
-Please let us know:
-- [Question 1]
-- [Question 2]
-- [Question 3]
-
-Looking forward to hearing from you!
-
-Best,
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                💬 Follow Up
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Dear {{Name}},
-
-🚨 URGENT: Important Update
-
-📢 Message: [Your urgent message]
-
-⚠️ Action Required:
-- [Step 1]
-- [Step 2]
-- [Step 3]
-
-Please respond by [deadline].
-
-Contact us immediately if you have questions.
-
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                🚨 Urgent Notice
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hello {{Name}}! 🎂
-
-🎉 Happy Birthday! 🎉
-
-Wishing you a wonderful day filled with happiness and joy!
-
-As a birthday treat, here's a special gift for you:
-🎁 [Your birthday offer/gift]
-
-Have an amazing celebration!
-
-With warm wishes,
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                🎂 Birthday Wishes
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-outline-secondary" 
-                onClick={() => setMessage(`Hi {{Name}},
-
-📋 Please confirm your attendance:
-
-📅 Event: [Event Name]
-🕐 Date & Time: [Date/Time]
-📍 Venue: [Location]
-
-Reply with:
-✅ YES - I'll attend
-❌ NO - Can't make it
-
-Deadline for confirmation: [Date]
-
-Thanks!
-Team`)}
-                disabled={progress.isRunning}
-                style={{fontSize: '12px', padding: '6px 8px'}}
-              >
-                📋 Confirmation Request
-              </button>
-
-              {/* BROADCAST TEMPLATES - Only show when broadcast mode is enabled */}
-              {broadcastMode && (
-                <>
-                  <div style={{width: '100%', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '6px', margin: '10px 0', textAlign: 'center', gridColumn: 'span 2'}}>
-                    <strong style={{color: '#856404'}}>📢 BROADCAST TEMPLATES - Same message to ALL {selectedData.length} members</strong>
-                  </div>
-                  
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`📢 BROADCAST ANNOUNCEMENT 📢
-
-🎉 Welcome to our Event Community!
-
-👥 Total Registered Members: {{MemberCount}}
-
-📋 All Registered Members:
-{{AllNames}}
-
-📅 Event: [Your Event Name]
-🕐 Date: [Event Date]
-📍 Venue: [Event Location]
-
-🔥 Everyone is invited and confirmed!
-
-Get ready for an amazing experience!
-
-Thanks!
-Team`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#ffc107', color: '#856404', backgroundColor: '#fff3cd'}}
-                  >
-                    📢 Welcome Broadcast with Full List
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`📋 MEMBER ATTENDANCE LIST 📋
-
-Dear Team,
-
-Here are all the registered members for the event:
-
-👥 Total Count: {{MemberCount}} members
-📝 Member Names: {{Names}}
-
-Please use this list for:
-✅ Attendance tracking
-✅ Seating arrangements  
-✅ Certificate preparation
-✅ Communication reference
-
-Event Details:
-📅 [Event Name]
-🕐 [Date & Time]
-📍 [Venue]
-
-Best regards,
-Registration Team`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#ffc107', color: '#856404', backgroundColor: '#fff3cd'}}
-                  >
-                    📋 Member List for Coordinators
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`🚨 URGENT BROADCAST 🚨
-
-ATTENTION: This message is for all {{MemberCount}} registered members:
-
-👥 All Members: {{Names}}
-
-⚠️ IMPORTANT UPDATE:
-[Your urgent message here]
-
-🔔 Action Required:
-- [Action 1]
-- [Action 2]
-- [Action 3]
-
-Please spread the word to all members!
-
-Emergency Contact: [Your contact]
-
-Team`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#dc3545', color: '#721c24', backgroundColor: '#f8d7da'}}
-                  >
-                    🚨 Emergency Broadcast Alert
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`🎊 CELEBRATION BROADCAST 🎊
-
-Amazing news for all our {{MemberCount}} members!
-
-🏆 We did it together! 
-
-👥 Special thanks to all members:
-{{AllNames}}
-
-🎉 Achievement: [Your achievement]
-🏅 This success belongs to all of us!
-
-Let's celebrate together!
-📅 Celebration Event: [Date/Time]
-📍 Location: [Venue]
-
-You're all AMAZING!
-
-With gratitude,
-Team`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#28a745', color: '#155724', backgroundColor: '#d4edda'}}
-                  >
-                    🎊 Success Celebration Broadcast
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`📊 GROUP UPDATE BROADCAST 📊
-
-Hello everyone! 
-
-👥 Current Group Status:
-- Total Members: {{MemberCount}}
-- All Active Members: {{Names}}
-
-📈 Latest Updates:
-- [Update 1]
-- [Update 2] 
-- [Update 3]
-
-🔥 What's Next:
-- [Next step 1]
-- [Next step 2]
-
-Stay connected and keep being awesome!
-
-Team Leader`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#17a2b8', color: '#0c5460', backgroundColor: '#d1ecf1'}}
-                  >
-                    � Group Progress Update
-                  </button>
-
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-warning" 
-                    onClick={() => setMessage(`🎯 CALL TO ACTION BROADCAST 🎯
-
-Dear {{Names}},
-
-We need EVERYONE'S participation!
-
-🚀 Mission: [Your mission/goal]
-👥 Team Size: {{MemberCount}} strong members
-
-💪 How YOU can help:
-1. [Action 1]
-2. [Action 2] 
-3. [Action 3]
-
-🏆 Together we can achieve anything!
-
-⏰ Deadline: [Your deadline]
-📞 Coordination: [Contact details]
-
-Let's make it happen!
-
-Team`)}
-                    disabled={progress.isRunning}
-                    style={{fontSize: '12px', padding: '6px 8px', borderColor: '#6f42c1', color: '#4c2a6b', backgroundColor: '#e2d9f3'}}
-                  >
-                    🎯 Mass Call to Action
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {progress.isRunning && (
-            <div className="progress-section" style={{backgroundColor: '#f0f8ff', padding: '15px', borderRadius: '8px', marginTop: '20px'}}>
-              <h4 style={{margin: '0 0 10px 0', color: '#1e5a8a'}}>📱 Sending Progress</h4>
-              <div className="progress-bar" style={{backgroundColor: '#e0e0e0', borderRadius: '10px', height: '20px', marginBottom: '10px'}}>
-                <div 
-                  className="progress-fill" 
-                  style={{
-                    backgroundColor: '#4caf50',
-                    height: '100%',
-                    borderRadius: '10px',
-                    width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                    transition: 'width 0.3s ease'
-                  }}
-                ></div>
-              </div>
-              <p style={{margin: '0 0 5px 0', fontWeight: 'bold'}}>
-                {progress.current} of {progress.total} messages sent
-              </p>
-              <p style={{margin: 0, color: '#666', fontSize: '14px'}}>{status}</p>
-            </div>
-          )}
-
-          {selectedData.length > 0 && phoneField && (
-            <div className="preview-section" style={{marginTop: '20px'}}>
-              <h4>Preview (First 3 contacts):</h4>
-              <div style={{maxHeight: '150px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px', padding: '10px'}}>
-                {selectedData.slice(0, 3).map((row, index) => (
-                  <div key={index} style={{marginBottom: '10px', padding: '8px', backgroundColor: '#f9f9f9', borderRadius: '4px'}}>
-                    <strong>{nameField ? row[nameField] : 'Contact'}</strong> - {row[phoneField]}
-                  </div>
-                ))}
-                {selectedData.length > 3 && (
-                  <div style={{textAlign: 'center', color: '#666', fontStyle: 'italic'}}>
-                    ...and {selectedData.length - 3} more contacts
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose} disabled={progress.isRunning}>
-            {progress.isRunning ? 'Running...' : 'Cancel'}
-          </button>
-          {!progress.isRunning ? (
-            <button 
-              className="btn btn-primary" 
-              onClick={() => onStart(phoneField, nameField)}
-              disabled={!message.trim() || selectedData.length === 0 || !phoneField}
-              style={{backgroundColor: '#25d366', borderColor: '#25d366'}}
-            >
-              {broadcastMode 
-                ? `� Send Broadcast (${selectedData.length} names to ${broadcastPhone || 'admin'})`
-                : `�🚀 Start Individual Messages (${selectedData.length} contacts)`
-              }
-            </button>
-          ) : (
-            <button 
-              className="btn btn-danger" 
-              onClick={onStop}
-            >
-              ⏹️ Stop Sending
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // --- Main Component ---
 const AdminPanel = () => {
   // --- State Management ---
@@ -1342,11 +598,10 @@ const AdminPanel = () => {
   const [globalSearch, setGlobalSearch] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [highlightedRows, setHighlightedRows] = useState(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [messagingModal, setMessagingModal] = useState({ isOpen: false, type: null });
   const [editingRowId, setEditingRowId] = useState(null);
   const [editedRowData, setEditedRowData] = useState(null);
   const [confirmation, setConfirmation] = useState({ isOpen: false });
@@ -1384,14 +639,6 @@ const AdminPanel = () => {
   });
   const [userRole, setUserRole] = useState('admin'); // admin, editor, viewer
   const [shareLink, setShareLink] = useState('');
-
-  // WhatsApp Bulk Sender States
-  const [whatsappModal, setWhatsappModal] = useState({ isOpen: false });
-  const [whatsappMessage, setWhatsappMessage] = useState('');
-  const [whatsappProgress, setWhatsappProgress] = useState({ current: 0, total: 0, isRunning: false });
-  const [whatsappStatus, setWhatsappStatus] = useState('');
-  const [broadcastMode, setBroadcastMode] = useState(false);
-  const [broadcastPhone, setBroadcastPhone] = useState('');
 
   // --- Handlers ---
   const handleResizeMove = useCallback((e) => {
@@ -1579,6 +826,14 @@ const AdminPanel = () => {
   const filteredData = useMemo(() => {
     let result = [...sheetData];
 
+    // Filter out empty rows (rows where all values are empty, null, or just whitespace)
+    result = result.filter(row => {
+      return headers.some(header => {
+        const value = row[header];
+        return value !== null && value !== undefined && String(value).trim() !== '';
+      });
+    });
+
     if (showOnlySelected) {
       const selectedRowData = result.filter(row => selectedRows.has(row.id));
       // When showing only selected, we don't want to apply other filters,
@@ -1624,7 +879,7 @@ const AdminPanel = () => {
   // --- Handlers ---
   const handleLogin = (e) => {
     e.preventDefault();
-    if (username === 'sakthi' && password === 'vel@3011') {
+    if (username === 'sakthi' && password === 'cmc@kongu') {
       setIsLoggedIn(true);
       setError('');
     } else {
@@ -1825,591 +1080,6 @@ const AdminPanel = () => {
       },
       onCancel: () => setPrompt({ isOpen: false })
     });
-  };
-
-  // WhatsApp Bulk Sender Functions
-  const validatePhoneNumber = (phone) => {
-    if (!phone) return null;
-    // Remove all non-numeric characters
-    let cleaned = phone.toString().replace(/\D/g, '');
-    
-    // If number doesn't start with country code, add India code (+91)
-    if (cleaned.length === 10 && !cleaned.startsWith('91')) {
-      cleaned = '91' + cleaned;
-    }
-    
-    // Check if it's a valid phone number (10-15 digits)
-    if (cleaned.length >= 10 && cleaned.length <= 15) {
-      return cleaned;
-    }
-    return null;
-  };
-
-  const openWhatsAppWeb = (phoneNumber, message) => {
-    const cleanPhone = validatePhoneNumber(phoneNumber);
-    if (!cleanPhone) {
-      console.error('Invalid phone number:', phoneNumber);
-      return false;
-    }
-    
-    // Encode the message for URL
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
-    
-    // Open in new tab
-    window.open(whatsappUrl, '_blank');
-    return true;
-  };
-
-  const handleWhatsAppBulkSend = async (phoneField, nameField) => {
-    const selectedData = sheetData.filter(row => selectedRows.has(row.id));
-    
-    if (selectedData.length === 0) {
-      setAlert({ isOpen: true, title: 'Error', message: 'No contacts selected.' });
-      return;
-    }
-
-    if (!whatsappMessage.trim()) {
-      setAlert({ isOpen: true, title: 'Error', message: 'Please enter a message.' });
-      return;
-    }
-
-    // Handle broadcast mode
-    if (broadcastMode) {
-      if (!phoneField) {
-        setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field for broadcast.' });
-        return;
-      }
-      startBroadcastSending(selectedData, phoneField, nameField);
-      return;
-    }
-
-    // Handle individual mode
-    if (!phoneField) {
-      setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field.' });
-      return;
-    }
-
-    // Validate phone numbers for individual mode
-    const validContacts = [];
-    const invalidContacts = [];
-
-    selectedData.forEach(row => {
-      const phone = validatePhoneNumber(row[phoneField]);
-      if (phone) {
-        validContacts.push({ ...row, cleanPhone: phone });
-      } else {
-        invalidContacts.push(row);
-      }
-    });
-
-    if (invalidContacts.length > 0) {
-      const confirmMsg = `Found ${invalidContacts.length} invalid phone numbers. Continue with ${validContacts.length} valid contacts?`;
-      setConfirmation({
-        isOpen: true,
-        title: 'Invalid Phone Numbers Detected',
-        message: confirmMsg,
-        confirmText: 'Continue',
-        confirmButtonClass: 'btn-primary',
-        onConfirm: () => {
-          setConfirmation({ isOpen: false });
-          startBulkSending(validContacts, phoneField, nameField);
-        },
-        onCancel: () => setConfirmation({ isOpen: false })
-      });
-    } else {
-      startBulkSending(validContacts, phoneField, nameField);
-    }
-  };
-
-  const startBulkSending = async (contacts, phoneField, nameField) => {
-    setWhatsappProgress({ current: 0, total: contacts.length, isRunning: true });
-    setWhatsappStatus('🚀 Starting automatic WhatsApp sending to all contacts...');
-
-    let successCount = 0;
-    let whatsappWindows = [];
-    
-    // Send all messages automatically with smart delays
-    for (let index = 0; index < contacts.length; index++) {
-      const contact = contacts[index];
-      
-      setTimeout(async () => {
-        const personalizedMessage = whatsappMessage.replace(/{{(.*?)}}/g, (match, p1) => {
-          const fieldName = p1.trim();
-          return contact[fieldName] || '';
-        });
-
-        const contactName = nameField ? contact[nameField] : `Contact ${index + 1}`;
-        
-        console.log(`🚀 Auto-sending to ${contactName} - Phone: ${contact.cleanPhone}`);
-        
-        try {
-          // Use multiple WhatsApp URLs for better delivery
-          const whatsappUrls = [
-            `https://api.whatsapp.com/send?phone=${contact.cleanPhone}&text=${encodeURIComponent(personalizedMessage)}`,
-            `https://wa.me/${contact.cleanPhone}?text=${encodeURIComponent(personalizedMessage)}`
-          ];
-          
-          // Open WhatsApp with auto-send attempt
-          whatsappUrls.forEach((url, urlIndex) => {
-            setTimeout(() => {
-              const newWindow = window.open(url, `whatsapp_individual_${index}_${urlIndex}`, 'width=400,height=600');
-              whatsappWindows.push(newWindow);
-              
-              // Try to auto-send after window loads
-              if (newWindow) {
-                setTimeout(() => {
-                  try {
-                    newWindow.focus();
-                    
-                    // Simulate Enter key to send message
-                    const enterEvent = new KeyboardEvent('keydown', {
-                      key: 'Enter',
-                      code: 'Enter',
-                      keyCode: 13,
-                      which: 13,
-                      bubbles: true
-                    });
-                    
-                    if (newWindow.document) {
-                      newWindow.document.dispatchEvent(enterEvent);
-                    }
-                  } catch (error) {
-                    console.log('Auto-send attempt:', error);
-                  }
-                }, 3000);
-              }
-            }, urlIndex * 300);
-          });
-          
-          successCount++;
-          
-          setWhatsappProgress(prev => ({ 
-            ...prev, 
-            current: successCount,
-            isRunning: successCount < contacts.length
-          }));
-          
-          if (successCount === contacts.length) {
-            setWhatsappStatus(`✅ ALL DONE! Sent personalized messages to all ${successCount} contacts automatically! 🎉`);
-            setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
-            
-            setTimeout(() => {
-              setAlert({
-                isOpen: true,
-                title: '🎉 BULK SENDING COMPLETE!',
-                message: `✅ Successfully sent personalized messages to ALL ${successCount} contacts!\n\n📱 ${whatsappWindows.length} WhatsApp windows opened\n� Each contact got their personalized message\n🚀 Automatic sending completed!`
-              });
-            }, 1000);
-          } else {
-            setWhatsappStatus(`📱 Auto-sending... ${successCount}/${contacts.length} messages sent automatically`);
-          }
-          
-        } catch (error) {
-          console.error(`Error sending to ${contactName}:`, error);
-        }
-        
-      }, index * 1200); // 1.2 second delay between each contact for individual messages
-    }
-  };
-
-  const stopWhatsAppBulkSend = () => {
-    setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
-    setWhatsappStatus('⏹️ Bulk sending stopped by user.');
-  };
-
-  const startBroadcastSending = async (selectedData, phoneFieldParam, nameField) => {
-    // Use the phone field that was passed from the form
-    const phoneFieldToUse = phoneFieldParam || headers.find(h => 
-      h.toLowerCase().includes('phone') || 
-      h.toLowerCase().includes('mobile') || 
-      h.toLowerCase().includes('number') ||
-      h.toLowerCase().includes('contact')
-    );
-
-    if (!phoneFieldToUse) {
-      setAlert({ isOpen: true, title: 'Error', message: 'Please select a phone number field for broadcast.' });
-      return;
-    }
-
-    // Get all valid phone numbers from selected data
-    const validContacts = [];
-    const invalidContacts = [];
-
-    selectedData.forEach(row => {
-      const phone = validatePhoneNumber(row[phoneFieldToUse]);
-      if (phone) {
-        validContacts.push({ ...row, cleanPhone: phone });
-      } else {
-        invalidContacts.push(row);
-      }
-    });
-
-    if (validContacts.length === 0) {
-      setAlert({ isOpen: true, title: 'Error', message: 'No valid phone numbers found in selected members.' });
-      return;
-    }
-
-    console.log(`🎯 BROADCAST MODE: Starting to send to ${validContacts.length} members`);
-    console.log('📋 Valid contacts:', validContacts.map(c => ({ name: c[nameField], phone: c.cleanPhone })));
-
-    setWhatsappProgress({ current: 0, total: validContacts.length, isRunning: true });
-    setWhatsappStatus(`📢 Starting automatic broadcast to ${validContacts.length} members...`);
-
-    // Create member list for broadcast message
-    const memberNames = validContacts.map(contact => {
-      const name = nameField ? contact[nameField] : 'Unknown';
-      const phone = contact[phoneFieldToUse];
-      return `${name} (${phone})`;
-    }).join('\n');
-
-    const memberNamesOnly = validContacts.map(contact => {
-      return nameField ? contact[nameField] : 'Unknown';
-    }).join(', ');
-
-    // Replace broadcast placeholders in the message
-    const broadcastMessage = whatsappMessage
-      .replace(/{{AllNames}}/g, memberNames)
-      .replace(/{{Names}}/g, memberNamesOnly)
-      .replace(/{{MemberCount}}/g, validContacts.length.toString())
-      .replace(/{{(.*?)}}/g, (match, p1) => {
-        const fieldName = p1.trim();
-        // For other placeholders, use data from the first contact or a generic value
-        return validContacts[0][fieldName] || `[${fieldName}]`;
-      });
-
-    let successCount = 0;
-    let whatsappWindows = [];
-    
-    // AUTO-SEND WhatsApp messages to all members simultaneously
-    for (let index = 0; index < validContacts.length; index++) {
-      const contact = validContacts[index];
-      const contactName = nameField ? contact[nameField] : `Member ${index + 1}`;
-      
-      setTimeout(async () => {
-        console.log(`🚀 Auto-sending to ${contactName} (${contact[phoneFieldToUse]}) - Phone: ${contact.cleanPhone}`);
-        
-        try {
-          // Use WhatsApp API URL for direct sending
-          const cleanPhone = contact.cleanPhone;
-          const encodedMessage = encodeURIComponent(broadcastMessage);
-          
-          // Try multiple WhatsApp sending methods
-          const whatsappUrls = [
-            `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`,
-            `https://wa.me/${cleanPhone}?text=${encodedMessage}`,
-            `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}&app_absent=0`
-          ];
-          
-          // Open multiple methods to ensure delivery
-          whatsappUrls.forEach((url, urlIndex) => {
-            setTimeout(() => {
-              const newWindow = window.open(url, `whatsapp_${index}_${urlIndex}`, 'width=400,height=600,scrollbars=yes,resizable=yes');
-              whatsappWindows.push(newWindow);
-              
-              // Try to auto-click send button after window loads
-              if (newWindow) {
-                setTimeout(() => {
-                  try {
-                    // Focus the window to make it active
-                    newWindow.focus();
-                    
-                    // Try to simulate enter key to send message
-                    const enterEvent = new KeyboardEvent('keydown', {
-                      key: 'Enter',
-                      code: 'Enter',
-                      keyCode: 13,
-                      which: 13,
-                      bubbles: true
-                    });
-                    
-                    if (newWindow.document) {
-                      newWindow.document.dispatchEvent(enterEvent);
-                    }
-                  } catch (error) {
-                    console.log('Auto-send attempt:', error);
-                  }
-                }, 3000); // Wait 3 seconds for WhatsApp to load
-              }
-            }, urlIndex * 200); // Stagger different URL attempts
-          });
-          
-          successCount++;
-          
-          // Update progress
-          setWhatsappProgress(prev => ({ 
-            ...prev, 
-            current: successCount,
-            isRunning: successCount < validContacts.length
-          }));
-          
-          // Update status
-          if (successCount === validContacts.length) {
-            setWhatsappStatus(`✅ AUTO-BROADCAST COMPLETE! Sent to ALL ${successCount} members! 🎉`);
-            setWhatsappProgress(prev => ({ ...prev, isRunning: false }));
-            
-            // Show completion message
-            setTimeout(() => {
-              setAlert({
-                isOpen: true,
-                title: '🎉 BROADCAST SUCCESS!',
-                message: `✅ Successfully sent broadcast message to ALL ${successCount} members!\n\n📱 ${whatsappWindows.length} WhatsApp windows opened\n📢 Same message delivered to everyone\n🚀 Automatic sending completed!`
-              });
-            }, 1000);
-          } else {
-            setWhatsappStatus(`📢 Auto-broadcasting... ${successCount}/${validContacts.length} sent automatically`);
-          }
-          
-        } catch (error) {
-          console.error(`Error sending to ${contactName}:`, error);
-          setWhatsappStatus(`❌ Error sending to ${contactName}. Continuing with others...`);
-        }
-        
-      }, index * 1000); // 1 second delay between each contact for reliability
-    }
-
-    if (invalidContacts.length > 0) {
-      setTimeout(() => {
-        setAlert({ 
-          isOpen: true, 
-          title: 'Broadcast Info', 
-          message: `✅ Broadcast sent to ${validContacts.length} members automatically!\n❌ ${invalidContacts.length} members had invalid phone numbers and were skipped.` 
-        });
-      }, (validContacts.length * 1000) + 2000);
-    }
-  };
-
-  const handleMessagingSend = (column, subject, message) => {
-    const selectedData = sheetData.filter(row => selectedRows.has(row.id));
-    const type = messagingModal.type;
-
-    const generatedMessages = selectedData.map(row => {
-      const recipient = row[column];
-      const personalizedMessage = message.replace(/{{(.*?)}}/g, (match, p1) => {
-        return row[p1.trim()] || '';
-      });
-      return { recipient, subject, message: personalizedMessage };
-    });
-
-    setMessagingModal({ isOpen: false, type: null });
-
-    if (type === 'email') {
-      const validMessages = generatedMessages.filter(msg => msg.recipient);
-      if (validMessages.length === 0) {
-        setAlert({ isOpen: true, title: 'Notice', message: 'No valid recipients found.' });
-        return;
-      }
-
-      setConfirmation({
-        isOpen: true,
-        title: 'Confirm Email Sending',
-        message: `You are about to open ${validMessages.length} email(s). Do you want to continue?`,
-        confirmText: 'Send All',
-        confirmButtonClass: 'btn-primary',
-        onConfirm: () => {
-          // Open all emails at once
-          validMessages.forEach((msg, index) => {
-            const individualSubject = encodeURIComponent(msg.subject || '');
-            const individualBody = encodeURIComponent(msg.message || '');
-            const individualMailtoLink = `mailto:${msg.recipient}?subject=${individualSubject}&body=${individualBody}`;
-            
-            // Use setTimeout to stagger the opening slightly to avoid popup blocking
-            setTimeout(() => {
-              window.open(individualMailtoLink, '_blank');
-            }, index * 300); // 300ms delay between each
-          });
-          
-          setConfirmation({ isOpen: false });
-          setAlert({
-            isOpen: true,
-            title: 'Action Required',
-            message: `Opening ${validMessages.length} email(s). Please check your browser and allow pop-ups for this site if not all tabs opened.`,
-          });
-        },
-        onCancel: () => setConfirmation({ isOpen: false })
-      });
-
-    } else if (type === 'whatsapp') {
-      const isValidPhoneNumber = (phone) => {
-        if (!phone || typeof phone !== 'string') return false;
-        const digits = phone.replace(/["\s-()+]/g, '');
-        return /^\d{7,}$/.test(digits);
-      };
-
-      const validMessages = generatedMessages.filter(m => isValidPhoneNumber(m.recipient));
-      const invalidMessages = generatedMessages.filter(m => !isValidPhoneNumber(m.recipient));
-
-      if (validMessages.length === 0) {
-        setAlert({ isOpen: true, title: 'Error', message: 'No valid phone numbers found for the selected rows. A valid number must contain at least 7 digits.' });
-        return;
-      }
-
-      const openWhatsAppLinks = () => {
-        let currentIndex = 0;
-        let countdownInterval;
-        let whatsappWindow = null;
-        
-        const sendWhatsAppMessage = async (phoneNumber, message) => {
-          return new Promise((resolve) => {
-            // Clean phone number
-            let cleanNumber = phoneNumber.replace(/["\s-()]/g, '');
-            if (cleanNumber.startsWith('+')) {
-                // number is already in international format
-            } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
-                cleanNumber = `+${cleanNumber}`;
-            } else if (cleanNumber.length === 10) {
-                cleanNumber = `+91${cleanNumber}`;
-            } else {
-                cleanNumber = `+91${cleanNumber}`;
-            }
-            
-            // Create WhatsApp Web URL with message
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanNumber}&text=${encodedMessage}&app_absent=0`;
-            
-            // Open or reuse WhatsApp Web window
-            if (!whatsappWindow || whatsappWindow.closed) {
-              whatsappWindow = window.open(whatsappUrl, 'whatsapp_bulk_sender', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-            } else {
-              whatsappWindow.location.href = whatsappUrl;
-              whatsappWindow.focus();
-            }
-            
-            resolve(true);
-          });
-        };
-        
-        const processNextMessage = async () => {
-          if (currentIndex >= validMessages.length) {
-            setAlert({
-              isOpen: true,
-              title: '🎉 All WhatsApp Messages Sent!',
-              message: `Successfully opened WhatsApp for all ${validMessages.length} recipients. Check your browser tabs to send the messages.`,
-            });
-            return;
-          }
-          
-          const m = validMessages[currentIndex];
-          let cleanNumber = m.recipient.replace(/["\s-()]/g, ''); // remove spaces, dashes, parens
-          if (cleanNumber.startsWith('+')) {
-              // number is already in international format
-          } else if (cleanNumber.length > 10 && cleanNumber.startsWith('91')) {
-              cleanNumber = `+${cleanNumber}`;
-          } else if (cleanNumber.length === 10) {
-              cleanNumber = `+91${cleanNumber}`;
-          } else {
-              cleanNumber = `+91${cleanNumber}`;
-          }
-          
-          const url = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(m.message)}`;
-          
-          // Open WhatsApp immediately
-          window.open(url, '_blank');
-          console.log(`📱 Opened WhatsApp for ${cleanNumber} (${currentIndex + 1}/${validMessages.length})`);
-          
-          currentIndex++;
-          
-          if (currentIndex < validMessages.length) {
-            // Show countdown for next recipient
-            let countdown = 30;
-            
-            const updateCountdown = () => {
-              setAlert({
-                isOpen: true,
-                title: `🚀 Auto WhatsApp Sending Progress`,
-                message: `✅ Sent to: ${cleanNumber}
-
-📱 Next recipient: ${validMessages[currentIndex].recipient}
-⏱️ Auto-sending in: ${countdown} seconds...
-
-� Progress: ${currentIndex}/${validMessages.length} completed
-🔄 ${validMessages.length - currentIndex} remaining
-
-🛑 Close this dialog to stop auto-sending`,
-              });
-              
-              countdown--;
-              
-              if (countdown < 0) {
-                clearInterval(countdownInterval);
-                openNextWhatsApp();
-              }
-            };
-            
-            // Start countdown
-            updateCountdown();
-            countdownInterval = setInterval(updateCountdown, 1000);
-            
-          } else {
-            // All done
-            setAlert({
-              isOpen: true,
-              title: '🎉 Auto WhatsApp Sending Complete!',
-              message: `✅ Successfully opened WhatsApp for all ${validMessages.length} recipients!
-              
-📱 Check your browser tabs - you now have ${validMessages.length} WhatsApp conversations ready
-💬 Each tab has the personalized message pre-filled
-🚀 Just click send in each WhatsApp tab!`,
-            });
-          }
-        };
-        
-        // Show initial confirmation
-        setAlert({
-          isOpen: true,
-          title: '🚀 Starting Auto WhatsApp Sending',
-          message: `Starting automatic WhatsApp sending to ${validMessages.length} recipients...
-
-⏱️ 30 seconds delay between each message
-📱 ${validMessages.length} tabs will open automatically
-🛑 Close any progress dialog to stop the process
-
-Opening first recipient now...`,
-        });
-        
-        // Start with first recipient after 2 seconds
-        setTimeout(() => {
-          openNextWhatsApp();
-        }, 2000);
-      };
-
-      let confirmationMessage = `🚀 BULK WhatsApp Sending
-      
-You are about to send WhatsApp messages to ${validMessages.length} selected members simultaneously.
-
-📱 ${validMessages.length} WhatsApp tabs will open automatically
-⏱️ Each tab opens with a 400ms delay to ensure reliability
-💬 Each member will receive a personalized message`;
-
-      if (invalidMessages.length > 0) {
-        const invalidRecipients = invalidMessages.map(m => m.recipient || 'empty').join(', ');
-        confirmationMessage += `
-
-⚠️ SKIPPED ENTRIES:
-The following ${invalidMessages.length} entries have invalid phone numbers and will be skipped:
-${invalidRecipients}`;
-      }
-      
-      confirmationMessage += `
-
-✅ Make sure pop-ups are enabled in your browser
-✅ Each message can be customized before sending
-
-Do you want to proceed with sending to all ${validMessages.length} valid recipients?`;
-
-      setConfirmation({
-        isOpen: true,
-        title: 'Confirm Bulk WhatsApp Sending',
-        message: confirmationMessage,
-        confirmText: `Send to All ${validMessages.length} Recipients`,
-        confirmButtonClass: 'btn-primary',
-        onConfirm: () => {
-          openWhatsAppLinks();
-          setConfirmation({ isOpen: false });
-        },
-        onCancel: () => setConfirmation({ isOpen: false })
-      });
-    }
   };
 
   const handleEdit = (row) => {
@@ -2650,14 +1320,6 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
         onConfirm={widthsPrompt.onConfirm}
         onCancel={widthsPrompt.onCancel}
       />
-      <MessagingModal
-        isOpen={messagingModal.isOpen}
-        title={`Send ${messagingModal.type}`}
-        headers={headers}
-        onSend={handleMessagingSend}
-        onCancel={() => setMessagingModal({ isOpen: false, type: null })}
-        type={messagingModal.type}
-      />
       <ColumnSelectorModal
         isOpen={columnSelector.isOpen}
         title={columnSelector.title}
@@ -2696,29 +1358,11 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
         selectedRowsCount={selectedRows.size}
       />
 
-      <WhatsAppBulkModal
-        isOpen={whatsappModal.isOpen}
-        onClose={() => setWhatsappModal({ isOpen: false })}
-        selectedRows={selectedRows}
-        sheetData={sheetData}
-        headers={headers}
-        message={whatsappMessage}
-        setMessage={setWhatsappMessage}
-        progress={whatsappProgress}
-        status={whatsappStatus}
-        onStart={handleWhatsAppBulkSend}
-        onStop={stopWhatsAppBulkSend}
-        broadcastMode={broadcastMode}
-        setBroadcastMode={setBroadcastMode}
-        broadcastPhone={broadcastPhone}
-        setBroadcastPhone={setBroadcastPhone}
-      />
-
       {/* Floating sidebar toggle button when collapsed */}
       {isSidebarCollapsed && (
-        <button 
+        <button
           className="floating-sidebar-toggle"
-          onClick={() => setIsSidebarCollapsed(false)}
+          onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(false); }}
           title="Open Sidebar"
           style={{
             position: 'fixed',
@@ -2763,36 +1407,11 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
             <>
               <div className="sidebar-header">
                 <div className="sidebar-nav-controls">
-                  <button 
-                    className="back-btn sidebar-back-btn" 
-                    onClick={() => window.history.back()} 
-                    title="Go Back"
-                    style={{
-                      padding: '8px',
-                      borderRadius: '6px',
-                      backgroundColor: 'transparent',
-                      border: '1px solid var(--border)',
-                      transition: 'all 0.3s ease',
-                      marginRight: '10px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = 'var(--primary)';
-                      e.target.style.color = 'white';
-                      e.target.style.transform = 'translateX(-3px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = 'transparent';
-                      e.target.style.color = 'var(--text-secondary)';
-                      e.target.style.transform = 'translateX(0)';
-                    }}
-                  >
-                    ←
-                  </button>
                   <span className="sidebar-title">PLANBOT Admin</span>
                 </div>
                 <button 
                   className="back-btn sidebar-close-btn" 
-                  onClick={() => setIsSidebarCollapsed(true)} 
+                  onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(true); }} 
                   title="Collapse Sidebar"
                   style={{
                     padding: '8px',
@@ -2825,11 +1444,11 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                 <div className="sidebar-section">
                   <div className="current-sheet-info">
                     <span className="sheet-name">{sheets.find(s => s.id === activeSheetId)?.name || 'No Sheet Selected'}</span>
-                    <button onClick={fetchSheetData} className="btn btn-primary refresh-btn" disabled={loading || !activeSheetId} title="Refresh data">
+                    <button onClick={(e) => { e.stopPropagation(); fetchSheetData(); }} className="btn btn-primary refresh-btn" disabled={loading || !activeSheetId} title="Refresh data">
                       {loading ? '⏳' : '🔄'}
                     </button>
                   </div>
-                  <button className="btn btn-secondary" onClick={() => setShowSheetSelector(true)} style={{width: '100%', marginTop: '10px'}}>
+                  <button className="btn btn-secondary" onClick={(e) => { e.stopPropagation(); setShowSheetSelector(true); }} style={{width: '100%', marginTop: '10px'}}>
                     Manage Sheets
                   </button>
                 </div>
@@ -2837,14 +1456,11 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                 <div className="sidebar-section">
                   <h3>Global Search</h3>
                   <input type="text" placeholder="Search all columns..." className="form-input" value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} />
-                  <button className="btn btn-secondary clear-btn" onClick={clearFilters}>Clear Filters & Search</button>
+                  <button className="btn btn-secondary clear-btn" onClick={(e) => { e.stopPropagation(); clearFilters(); }}>Clear Filters & Search</button>
                 </div>
 
                 <div className="sidebar-section">
                   <h3>Data Actions</h3>
-                  
-                  {/* Quick Selection Buttons */}
-                  
                   
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setIsModalOpen(true)} disabled={selectedRows.size === 0}>
                     👁️ Preview Selected ({selectedRows.size})
@@ -2919,14 +1535,15 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                           <div className="selection-actions">
                             <button 
                               className="btn btn-primary load-btn" 
-                              onClick={() => handleLoadSelection(selection)}
+                              onClick={(e) => { e.stopPropagation(); handleLoadSelection(selection); }}
                               title="Load this team selection"
                             >
                               📂
                             </button>
                             <button 
                               className="btn btn-secondary delete-btn" 
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (window.confirm(`Delete team "${selection.name}"?`)) {
                                   handleDeleteSelection(selection.id);
                                 }
@@ -2943,61 +1560,20 @@ Do you want to proceed with sending to all ${validMessages.length} valid recipie
                 </div>
 
                 <div className="sidebar-section">
-                  <h3>🚀 MASS MESSAGING</h3>
-                  <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '8px', marginBottom: '12px', border: '2px solid #25d366'}}>
-                    <p style={{margin: '0', fontSize: '0.85rem', color: '#2d5a2d', fontWeight: 'bold', textAlign: 'center'}}>
-                      📢 BROADCAST to {selectedRows.size} selected members
-                    </p>
-                    {selectedRows.size > 0 && (
-                      <p style={{margin: '5px 0 0 0', fontSize: '0.75rem', color: '#2d5a2d', textAlign: 'center'}}>
-                        ✅ Ready for mass messaging!
-                      </p>
-                    )}
-                  </div>
-                  <button 
-                    className="btn btn-secondary sidebar-action-btn" 
-                    onClick={() => setMessagingModal({ isOpen: true, type: 'email' })} 
-                    disabled={selectedRows.size === 0}
-                    style={{
-                      backgroundColor: selectedRows.size > 0 ? '#17a2b8' : '',
-                      color: selectedRows.size > 0 ? 'white' : '',
-                      fontWeight: selectedRows.size > 0 ? 'bold' : 'normal'
-                    }}
-                  >
-                    📧 Bulk Email to All Selected ({selectedRows.size})
-                  </button>
-                  <button 
-                    className="btn btn-secondary sidebar-action-btn" 
-                    onClick={() => {
-                      setBroadcastMode(false); // Default to individual mode
-                      setWhatsappModal({ isOpen: true });
-                    }} 
-                    disabled={selectedRows.size === 0}
-                    style={{
-                      backgroundColor: selectedRows.size > 0 ? '#25d366' : '',
-                      color: selectedRows.size > 0 ? 'white' : '',
-                      fontWeight: selectedRows.size > 0 ? 'bold' : 'normal'
-                    }}
-                  >
-                    � Bulk WhatsApp ({selectedRows.size} contacts)
-                  </button>
-                </div>
-
-                <div className="sidebar-section">
                   <h3>Settings</h3>
                   <div className="theme-toggle">
                     <span>Light</span>
                     <label className="switch">
-                      <input type="checkbox" onChange={() => setTheme(t => t === 'light' ? 'dark' : 'light')} checked={theme === 'dark'} />
+                      <input type="checkbox" onChange={(e) => { e.stopPropagation(); setTheme(t => t === 'light' ? 'dark' : 'light'); }} checked={theme === 'dark'} />
                       <span className="slider"></span>
                     </label>
                     <span>Dark</span>
                   </div>
                   <label>Rows Per Page</label>
-                  <select value={rowsPerPage} onChange={e => setRowsPerPage(Number(e.target.value))} className="form-input">
+                  <select value={rowsPerPage} onChange={(e) => { e.stopPropagation(); setRowsPerPage(Number(e.target.value)); }} className="form-input">
                     {[10, 20, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
                   </select>
-                  <button onClick={handleLogout} className="btn btn-secondary logout-btn" style={{width: '100%', marginTop: '1rem'}}>Logout</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="btn btn-secondary logout-btn" style={{width: '100%', marginTop: '1rem'}}>Logout</button>
                 </div>
               </div>
             </>
