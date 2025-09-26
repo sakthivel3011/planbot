@@ -949,7 +949,7 @@ body {
 
 .modern-error {
   background: linear-gradient(135deg, #ff6b6b, #ff5252);
-  color: white;
+  color: white !important;
   padding: 1rem;
   border-radius: 12px;
   text-align: center;
@@ -2195,7 +2195,7 @@ input:checked + .slider:before {
 /* Error Message */
 .error-message {
   background-color: rgba(247, 37, 133, 0.1);
-  color: var(--warning);
+  color: white;
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
   margin-bottom: 1rem;
@@ -2628,7 +2628,7 @@ input:checked + .slider:before {
 /* Error and Loading States */
 .error-message {
   background: var(--gradient-warning);
-  color: white;
+  color: white !important;
   padding: 1rem 2rem;
   margin: 1rem 2rem;
   border-radius: 10px;
