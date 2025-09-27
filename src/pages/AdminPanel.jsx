@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import '../assets/css/Adminpanel.css';
+import WhatsAppSending from '../components/WhatsAppSending';
 
 // --- SVG Icons ---
 const MenuIcon = () => (
@@ -621,6 +622,7 @@ const AdminPanel = () => {
   // New state variables
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [pdfConfigModalOpen, setPdfConfigModalOpen] = useState(false);
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [pdfConfig, setPdfConfig] = useState(() => {
     const savedConfig = localStorage.getItem('pdfConfig');
     return savedConfig ? JSON.parse(savedConfig) : {
@@ -826,12 +828,32 @@ const AdminPanel = () => {
   const filteredData = useMemo(() => {
     let result = [...sheetData];
 
-    // Filter out empty rows (rows where all values are empty, null, or just whitespace)
+    // Filter out empty rows - be more strict about what constitutes a valid row
     result = result.filter(row => {
-      return headers.some(header => {
+      // Count how many fields have meaningful data
+      let nonEmptyFields = 0;
+      let hasImportantField = false;
+      
+      // Define important fields that should have data for a row to be valid
+      const importantFields = ['Name', 'name', 'Phone', 'phone', 'Email', 'email', 'ID', 'id', 'Roll No', 'rollno'];
+      
+      headers.forEach(header => {
         const value = row[header];
-        return value !== null && value !== undefined && String(value).trim() !== '';
+        const stringValue = String(value).trim();
+        
+        // Check if this field has meaningful data (not empty, not just special characters)
+        if (value !== null && value !== undefined && stringValue !== '' && stringValue !== '-' && stringValue !== 'N/A') {
+          nonEmptyFields++;
+          
+          // Check if this is an important field
+          if (importantFields.some(field => header.toLowerCase().includes(field.toLowerCase()))) {
+            hasImportantField = true;
+          }
+        }
       });
+      
+      // A row is valid if it has at least 3 non-empty fields OR has at least one important field with data
+      return nonEmptyFields >= 3 || hasImportantField;
     });
 
     if (showOnlySelected) {
@@ -1358,6 +1380,14 @@ const AdminPanel = () => {
         selectedRowsCount={selectedRows.size}
       />
 
+      <WhatsAppSending
+        isOpen={whatsappModalOpen}
+        onClose={() => setWhatsappModalOpen(false)}
+        selectedMembers={sheetData.filter(row => selectedRows.has(row.id))}
+        eventName=""
+        companyName=""
+      />
+
       {/* Floating sidebar toggle button when collapsed */}
       {isSidebarCollapsed && (
         <button
@@ -1467,6 +1497,9 @@ const AdminPanel = () => {
                   </button>
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => setSaveSelectionModalOpen(true)} disabled={selectedRows.size === 0}>
                     💾 Save Selection ({selectedRows.size})
+                  </button>
+                  <button className="btn btn-success sidebar-action-btn" onClick={() => setWhatsappModalOpen(true)} disabled={selectedRows.size === 0}>
+                    📱 Send WhatsApp ({selectedRows.size})
                   </button>
                   <button className="btn btn-secondary sidebar-action-btn" onClick={() => exportToCsv('all_data.csv', sortedData)} disabled={sheetData.length === 0}>
                     📥 Download All as CSV
@@ -1593,7 +1626,10 @@ const AdminPanel = () => {
               </div>
             )}
             {sheetData.length > 0 && (
-              <span>Showing {paginatedData.length} of {filteredData.length} matching rows ({sheetData.length} total)</span>
+              <span>
+                Showing {paginatedData.length} of {filteredData.length} matching rows 
+                ({sheetData.length} total{sheetData.length !== filteredData.length ? `, ${sheetData.length - filteredData.length} empty rows filtered out` : ''})
+              </span>
             )}
           </div>
         </div>
