@@ -17,11 +17,11 @@ const WhatsAppSending = ({ isOpen, onClose, selectedMembers = [], eventName = ''
   const [selectedNameField, setSelectedNameField] = useState('Name');
   const [selectedPhoneField, setSelectedPhoneField] = useState('Phone');
 
-  // Cultural & Music Club Message Templates
+  // Cultural & Music Club Message Templates - FIXED EMOJIS
   const messageTemplates = {
     'event-confirmation': {
       name: '✅ Event Confirmation',
-      template: `� Cultural & Music Club - KEC �
+      template: `🎶 Cultural & Music Club - KEC 🎶
 Congratulations *{name}*! 
 
 🎉 *YOU ARE SELECTED IN {eventName}* 🎉
@@ -44,7 +44,7 @@ Welcome to the {eventName}! 🎵`
     },
     'event-reminder': {
       name: '⏰ Event Reminder',
-      template: `� Cultural & Music Club - KEC �
+      template: `🎶 Cultural & Music Club - KEC 🎶
 Hi *{name}*! Your event is approaching! 
 
 *Event Reminder Details:*
@@ -60,11 +60,11 @@ For any queries, contact: 89254 90989
 
 This is an automated account. Replies are not monitored.
 
-See you at the event! �`
+See you at the event! 🎵`
     },
     'welcome': {
       name: '🎉 Welcome Message',
-      template: `� Cultural & Music Club - KEC �
+      template: `🎶 Cultural & Music Club - KEC 🎶
 Welcome to our cultural family, *{name}*! 🎉
 
 *Your Welcome Details:*
@@ -93,10 +93,10 @@ We value your opinion, *{name}*! ✨
 📅 Event: *{eventName}*
 🎯 Event Type: *{eventType}*
 
-Your feedback helps us improve and create better cultural experiences. �
+Your feedback helps us improve and create better cultural experiences. 🎵
 
 🌐 Share your feedback here: {feedbackLink}
-� For queries, contact: 89254 90989
+📞 For queries, contact: 89254 90989
 
 ⚠️ This is an automated account. Replies are not monitored.
 
